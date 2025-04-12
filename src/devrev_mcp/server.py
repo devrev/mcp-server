@@ -14,7 +14,7 @@ import mcp.types as types
 from mcp.server import NotificationOptions, Server
 from pydantic import AnyUrl
 import mcp.server.stdio
-from .utils import make_devrev_request
+from .utils import make_devrev_request, search_part_by_name, get_current_user_id
 
 server = Server("devrev_mcp")
 
@@ -46,6 +46,18 @@ async def handle_list_tools() -> list[types.Tool]:
                     "id": {"type": "string"},
                 },
                 "required": ["id"],
+            },
+        ),
+        types.Tool(
+            name="create_issue",
+            description="Create a DevRev issue with the specified title. The part_name parameter is used to search for and identify the appropriate part ID, and the issue will be automatically assigned to the currently authenticated user.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string"},
+                    "part_name": {"type": "string"},
+                },
+                "required": ["title", "part_name"],
             },
         )
     ]
@@ -116,6 +128,65 @@ async def handle_call_tool(
             types.TextContent(
                 type="text",
                 text=f"Object information for '{id}':\n{object_info}"
+            )
+        ]
+    elif name == "create_issue":
+        if not arguments:
+            raise ValueError("Missing arguments")
+
+        title = arguments.get("title")
+        part_name = arguments.get("part_name")
+        
+        if not title:
+            raise ValueError("Missing title parameter")
+            
+        if not part_name:
+            raise ValueError("Missing part_name parameter")
+            
+        # Search for part by name
+        success, part_id, error_message = search_part_by_name(part_name)
+        if not success:
+            return [
+                types.TextContent(
+                    type="text",
+                    text=error_message
+                )
+            ]
+            
+        # Get current user ID
+        success, user_id, error_message = get_current_user_id()
+        if not success:
+            return [
+                types.TextContent(
+                    type="text",
+                    text=error_message
+                )
+            ]
+    
+        response = make_devrev_request(
+            "works.create",
+            {
+                "type": "issue",
+                "title": title,
+                "applies_to_part": part_id,
+                "owned_by": [user_id]
+            }
+        )
+        
+        if response.status_code != 201:
+            error_text = response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"Create issue failed with status {response.status_code}: {error_text}"
+                )
+            ]
+
+        issue_info = response.json()
+        return [
+            types.TextContent(
+                type="text",
+                text=f"Issue created successfully with ID: {issue_info['display_id']} Info: {issue_info}"
             )
         ]
     else:

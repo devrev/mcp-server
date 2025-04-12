@@ -8,6 +8,10 @@ A Model Context Protocol server for DevRev. It is used to search and retrieve in
 
 - `search`: Search for information using the DevRev search API with the provided query and namespace.
 - `get_object`: Get all information about a DevRev issue or ticket using its ID.
+- `create_issue`: Creates a DevRev issue with a specified title and part. Parameters:
+  - `title`: The issue title (required)
+  - `part_name`: Name of the part to associate with the issue (required).
+  - The issue will be automatically assigned to the currently authenticated user
 
 ## Configuration
 

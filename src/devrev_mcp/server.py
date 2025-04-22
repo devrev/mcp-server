@@ -32,7 +32,7 @@ async def handle_list_tools() -> list[types.Tool]:
                 "type": "object",
                 "properties": {
                     "query": {"type": "string"},
-                    "namespace": {"type": "string", "enum": ["article", "issue", "ticket"]},
+                    "namespace": {"type": "string", "enum": ["article", "issue", "ticket", "part", "dev_user"]},
                 },
                 "required": ["query", "namespace"],
             },
@@ -46,6 +46,21 @@ async def handle_list_tools() -> list[types.Tool]:
                     "id": {"type": "string"},
                 },
                 "required": ["id"],
+            },
+        ),
+        types.Tool(
+            name="create_object",
+            description="Create a new isssue or ticket in DevRev",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "type": {"type": "string", "enum": ["issue", "ticket"]},
+                    "title": {"type": "string"},
+                    "body": {"type": "string"},
+                    "applies_to_part": {"type": "string"},
+                    "owned_by": {"type": "array", "items": {"type": "string"}}
+                },
+                "required": ["type", "title", "applies_to_part"],
             },
         )
     ]
@@ -116,6 +131,52 @@ async def handle_call_tool(
             types.TextContent(
                 type="text",
                 text=f"Object information for '{id}':\n{object_info}"
+            )
+        ]
+    elif name == "create_object":
+        if not arguments:
+            raise ValueError("Missing arguments")
+
+        # Mandatory fields
+        object_type = arguments.get("type")
+        if not object_type:
+            raise ValueError("Missing type parameter")
+
+        title = arguments.get("title")
+        if not title:
+            raise ValueError("Missing title parameter")
+
+        applies_to_part = arguments.get("applies_to_part")
+        if not applies_to_part:
+            raise ValueError("Missing applies_to_part parameter")
+
+        # Optional fields
+        body = arguments.get("body", "")
+        owned_by = arguments.get("owned_by", [])
+
+        response = make_devrev_request(
+            "works.create",
+            {
+                "type": object_type,
+                "title": title,
+                "body": body,
+                "applies_to_part": applies_to_part,
+                "owned_by": owned_by
+            }
+        )
+        if response.status_code != 201:
+            error_text = response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"Create object failed with status {response.status_code}: {error_text}"
+                )
+            ]
+
+        return [
+            types.TextContent(
+                type="text",
+                text=f"Object created successfully: {response.json()}"
             )
         ]
     else:

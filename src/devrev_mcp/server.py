@@ -62,7 +62,21 @@ async def handle_list_tools() -> list[types.Tool]:
                 },
                 "required": ["type", "title", "applies_to_part"],
             },
-        )
+        ),
+        types.Tool(
+            name="update_object",
+            description="Update an existing issue or ticket in DevRev",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "type": {"type": "string", "enum": ["issue", "ticket"]},
+                    "id": {"type": "string"},
+                    "title": {"type": "string"},
+                    "body": {"type": "string"},
+                },
+                "required": ["id", "type"],
+            },
+        ),
     ]
 
 @server.call_tool()
@@ -177,6 +191,53 @@ async def handle_call_tool(
             types.TextContent(
                 type="text",
                 text=f"Object created successfully: {response.json()}"
+            )
+        ]
+    elif name == "update_object":
+        # update mandatory fields
+        if not arguments:
+            raise ValueError("Missing arguments")
+
+        id = arguments.get("id")
+        if not id:
+            raise ValueError("Missing id parameter")
+        
+        object_type = arguments.get("type")
+        if not object_type:
+            raise ValueError("Missing type parameter")
+        
+        # update title and body
+        title = arguments.get("title")
+        body = arguments.get("body")
+        
+        # Build request payload with only the fields that have values
+        update_payload = {"id": id, "type": object_type}
+        if title:
+            update_payload["title"] = title
+        if body:
+            update_payload["body"] = body
+            
+        # make devrev request to update the object
+        response = make_devrev_request(
+            "works.update",
+            update_payload
+        )
+
+        #check if the request was successful
+        if response.status_code != 200:
+            error_text = response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"Update object failed with status {response.status_code}: {error_text}"
+                )
+            ]
+        
+        # make response
+        return [
+            types.TextContent(
+                type="text",
+                text=f"Object updated successfully: {id}"
             )
         ]
     else:

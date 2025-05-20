@@ -206,7 +206,7 @@ async def handle_call_tool(
         if not object_type:
             raise ValueError("Missing type parameter")
         
-        # update title and body
+        # Update title and body
         title = arguments.get("title")
         body = arguments.get("body")
         
@@ -233,7 +233,6 @@ async def handle_call_tool(
                 )
             ]
         
-        # make response
         return [
             types.TextContent(
                 type="text",

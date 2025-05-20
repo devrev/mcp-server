@@ -194,7 +194,7 @@ async def handle_call_tool(
             )
         ]
     elif name == "update_object":
-        # update mandatory fields
+        # Update mandatory fields
         if not arguments:
             raise ValueError("Missing arguments")
 
@@ -217,13 +217,13 @@ async def handle_call_tool(
         if body:
             update_payload["body"] = body
             
-        # make devrev request to update the object
+        # Make devrev request to update the object
         response = make_devrev_request(
             "works.update",
             update_payload
         )
 
-        #check if the request was successful
+        # Check if the request was successful
         if response.status_code != 200:
             error_text = response.text
             return [

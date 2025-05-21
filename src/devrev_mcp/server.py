@@ -15,6 +15,7 @@ from mcp.server import NotificationOptions, Server
 from pydantic import AnyUrl
 import mcp.server.stdio
 from .utils import make_devrev_request
+from .utils import make_internal_devrev_request
 
 server = Server("devrev_mcp")
 
@@ -24,6 +25,7 @@ async def handle_list_tools() -> list[types.Tool]:
     List available tools.
     Each tool specifies its arguments using JSON Schema validation.
     """
+
     return [
         types.Tool(
             name="search",
@@ -73,10 +75,22 @@ async def handle_list_tools() -> list[types.Tool]:
                     "id": {"type": "string"},
                     "title": {"type": "string"},
                     "body": {"type": "string"},
+                    "stage": {"type": "string", "description": "A valid stage id the object can transition to"}
                 },
                 "required": ["id", "type"],
             },
         ),
+        types.Tool(
+            name="valid_stage_transitions",
+            description="Get all the possible stage transitions for a current stage of a given object ID",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string"},
+                },
+                "required": ["id"],
+            },
+        )
     ]
 
 @server.call_tool()
@@ -206,17 +220,19 @@ async def handle_call_tool(
         if not object_type:
             raise ValueError("Missing type parameter")
         
-        # Update title and body
         title = arguments.get("title")
         body = arguments.get("body")
-        
+        stage = arguments.get("stage")
+
         # Build request payload with only the fields that have values
         update_payload = {"id": id, "type": object_type}
         if title:
             update_payload["title"] = title
         if body:
             update_payload["body"] = body
-            
+        if stage:
+            update_payload["stage"] = {"stage": stage}
+        
         # Make devrev request to update the object
         response = make_devrev_request(
             "works.update",
@@ -238,6 +254,86 @@ async def handle_call_tool(
                 type="text",
                 text=f"Object updated successfully: {id}"
             )
+        ]
+    elif name == "valid_stage_transitions":
+        if not arguments:
+            raise ValueError("Missing arguments")
+
+        id = arguments.get("id")
+        if not id:
+            raise ValueError("Missing id parameter")
+        
+        response = make_devrev_request(
+            "works.get",
+            {"id": id}
+        )
+
+        if response.status_code != 200:
+            error_text = response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"Get object for Get stage transitions failed with status {response.status_code}: {error_text}"
+                )
+            ]
+        
+        current_stage_id = response.json().get("work", {}).get("stage", {}).get("stage", {}).get("id", {})
+
+        stock_schema_frag_id = response.json().get("work", {}).get("stock_schema_fragment", {})
+        custom_schema_frag_id = response.json().get("work", {}).get("custom_schema_fragments", [])
+        leaf_type = response.json().get("work", {}).get("type", {})
+
+        schema_response = make_internal_devrev_request(
+            "schemas.aggregated.get",
+            {
+             "custom_schema_fragment_ids": custom_schema_frag_id,
+             "leaf_type": leaf_type,
+             "stock_schema_fragment_id": stock_schema_frag_id
+            }
+        )
+
+        if schema_response.status_code != 200:
+            error_text = schema_response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"Get object schema for Get stage transitions failed with status {schema_response.status_code}: {error_text}"
+                )
+            ]
+
+        stage_diagram_id = schema_response.json().get("schema", {}).get("stage_diagram_id", {}).get("id", {})
+        stage_transitions_response = make_internal_devrev_request(
+            "stage-diagrams.get",
+            {"id": stage_diagram_id}
+        )
+
+        if stage_transitions_response.status_code != 200:
+            error_text = stage_transitions_response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"Get stage diagram for Get stage transitions failed with status {stage_transitions_response.status_code}: {error_text}"
+                )
+            ]
+
+        # Need to iterate over the stages and find the one which matches current stage id and return its transitions
+        stages = stage_transitions_response.json().get("stage_diagram", {}).get("stages", [])
+
+        for stage in stages:
+            if stage.get("stage", {}).get("id") == current_stage_id:
+                transitions = stage.get("transitions", [])
+                return [
+                    types.TextContent(
+                        type="text",
+                        text=f"Valid Transitions for '{id}' from current stage:\n{transitions}"
+                    )
+                ]
+
+        return [
+            types.TextContent(
+                type="text",
+                text=f"No valid transitions found for '{id}' from current stage"
+            ),
         ]
     else:
         raise ValueError(f"Unknown tool: {name}")

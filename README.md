@@ -1,4 +1,5 @@
 # DevRev MCP server
+[![smithery badge](https://smithery.ai/badge/@devrev/mcp-server)](https://smithery.ai/server/@devrev/mcp-server)
 
 ## Overview
 

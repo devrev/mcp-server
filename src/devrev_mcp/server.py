@@ -96,8 +96,8 @@ async def handle_list_tools() -> list[types.Tool]:
                     "applies_to_part": {"type": "array", "items": {"type": "string"}, "description": "The part IDs of the works to list"},
                     "created_by": {"type": "array", "items": {"type": "string"}, "description": "The user IDs of the creators of the works to list"},
                     "owned_by": {"type": "array", "items": {"type": "string"}, "description": "The user IDs of the owners of the works to list"},
-                    "stage": {"type": "array", "items": {"type": "string"}, "description": "The stage IDs of the works to list"},
-                    "state": {"type": "array", "items": {"type": "string"}, "description": "The state IDs of the works to list"},
+                    "stage": {"type": "array", "items": {"type": "string"}, "description": "The stage names of the works to list"},
+                    "state": {"type": "array", "items": {"type": "string"}, "description": "The state names of the works to list"},
                     "limit": {"type": "integer", "description": "The maximum number of works to list"},
                 },
                 "required": [],
@@ -116,6 +116,23 @@ async def handle_list_tools() -> list[types.Tool]:
                     "description": {"type": "string", "description": "The description of the part"},
                 },
                 "required": ["type", "name", "owned_by", "parent_part"],
+            },
+        ),
+        types.Tool(
+            name="update_part",
+            description="Update an existing part in DevRev",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "type": {"type": "string"},
+                    "id": {"type": "string"},
+                    "name": {"type": "string"},
+                    "description": {"type": "string"},
+                    "owned_by": {"type": "array", "items": {"type": "string"}, "description": "The user IDs of the owners of the part"},
+                    "target_close_date": {"type": "date-time", "description": "The target closed date of the part, for example: 2025-06-03T00:00:00Z"},
+                    "target_start_date": {"type": "date-time", "description": "The target start date of the part, for example: 2025-06-03T00:00:00Z"},
+                },
+                "required": ["id", "type"],
             },
         ),
     ]
@@ -401,6 +418,61 @@ async def handle_call_tool(
             types.TextContent(
                 type="text",
                 text=f"Part created successfully: {response.json()}"
+            )
+        ]
+    elif name == "update_part":
+        if not arguments:
+            raise ValueError("Missing arguments")
+
+        payload = {}
+        
+        id = arguments.get("id")
+        if not id:
+            raise ValueError("Missing id parameter")
+        payload["id"] = id
+
+        type = arguments.get("type")
+        if not type:
+            raise ValueError("Missing type parameter")
+        payload["type"] = type
+
+        name = arguments.get("name")
+        if not name:
+            payload["name"] = name
+
+        description = arguments.get("description")
+        if description:
+            payload["description"] = description
+
+        owned_by = arguments.get("owned_by")
+        if owned_by:
+            payload["owned_by"] = owned_by
+
+        target_close_date = arguments.get("target_close_date")
+        if target_close_date:
+            payload["target_close_date"] = target_close_date
+
+        target_start_date = arguments.get("target_start_date")
+        if target_start_date:
+            payload["target_start_date"] = target_start_date
+
+        response = make_devrev_request(
+            "parts.update",
+            payload
+        )
+
+        if response.status_code != 200:
+            error_text = response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"Update part failed with status {response.status_code}: {error_text}"
+                )
+            ]
+        return [
+            types.TextContent(
+                type="text",
+                text=f"Part updated successfully: {response.json()}"
             )
         ]
     else:

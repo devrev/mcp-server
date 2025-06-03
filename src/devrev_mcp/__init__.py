@@ -2,15 +2,16 @@
 Copyright (c) 2025 DevRev, Inc.
 SPDX-License-Identifier: MIT
 
-DevRev MCP server package initialization.
+DevRev MCP Server package.
+This package provides a FastMCP-based server for interacting with DevRev APIs.
 """
 
-from . import server
-import asyncio
+from .server import main, mcp
 
-def main():
-    """Main entry point for the package."""
-    asyncio.run(server.main())
+__version__ = "0.1.1"
+__all__ = ["main", "mcp"]
 
-# Optionally expose other important items at package level
-__all__ = ['main', 'server']
+# Export the main function for the CLI entry point
+def main_cli():
+    """CLI entry point for the DevRev MCP server."""
+    main()

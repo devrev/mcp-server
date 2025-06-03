@@ -104,6 +104,17 @@ async def handle_list_tools() -> list[types.Tool]:
             },
         ),
         types.Tool(
+            name="get_part",
+            description="Get an existing part in DevRev",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string"},
+                },
+                "required": ["id"],
+            },
+        ),
+        types.Tool(
             name="create_part",
             description="Create a new part in DevRev",
             inputSchema={
@@ -124,13 +135,13 @@ async def handle_list_tools() -> list[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "type": {"type": "string"},
+                    "type": {"type": "string", "enum": ["enhancement"]},
                     "id": {"type": "string"},
                     "name": {"type": "string"},
                     "description": {"type": "string"},
                     "owned_by": {"type": "array", "items": {"type": "string"}, "description": "The user IDs of the owners of the part"},
-                    "target_close_date": {"type": "date-time", "description": "The target closed date of the part, for example: 2025-06-03T00:00:00Z"},
-                    "target_start_date": {"type": "date-time", "description": "The target start date of the part, for example: 2025-06-03T00:00:00Z"},
+                    "target_close_date": {"type": "string", "description": "The target closed date of the part, for example: 2025-06-03T00:00:00Z"},
+                    "target_start_date": {"type": "string", "description": "The target start date of the part, for example: 2025-06-03T00:00:00Z"},
                 },
                 "required": ["id", "type"],
             },
@@ -341,7 +352,7 @@ async def handle_call_tool(
 
         stage = arguments.get("stage")
         if stage:
-            payload["stage"]["name"] = stage
+            payload["stage"] = {"name": stage}
 
         state = arguments.get("state")
         if state:
@@ -368,6 +379,35 @@ async def handle_call_tool(
             types.TextContent(
                 type="text",
                 text=f"Works listed successfully: {response.json()}"
+            )
+        ]
+    elif name == "get_part":
+        if not arguments:
+            raise ValueError("Missing arguments")
+
+        id = arguments.get("id")
+        if not id:
+            raise ValueError("Missing id parameter")
+        
+        response = make_devrev_request(
+            "parts.get",
+            {"id": id}
+        )
+
+        if response.status_code != 200:
+            error_text = response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"Get part failed with status {response.status_code}: {error_text}"
+                )
+            ]
+        
+        part_info = response.json()
+        return [
+            types.TextContent(
+                type="text",
+                text=f"Part information for '{id}':\n{part_info}"
             )
         ]
     elif name == "create_part":
@@ -437,7 +477,7 @@ async def handle_call_tool(
         payload["type"] = type
 
         name = arguments.get("name")
-        if not name:
+        if name:
             payload["name"] = name
 
         description = arguments.get("description")

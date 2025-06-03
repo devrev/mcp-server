@@ -38,6 +38,15 @@ async def handle_list_tools() -> list[types.Tool]:
             },
         ),
         types.Tool(
+            name="get_current_user",
+            description="Get the current user's information",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        ),
+        types.Tool(
             name="get_object",
             description="Get all information about a DevRev issue and ticket using its ID",
             inputSchema={
@@ -75,6 +84,38 @@ async def handle_list_tools() -> list[types.Tool]:
                     "body": {"type": "string"},
                 },
                 "required": ["id", "type"],
+            },
+        ),
+        types.Tool(
+            name="list_works",
+            description="List all works in DevRev",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "type": {"type": "array", "items": {"type": "string", "enum": ["issue", "ticket"]}, "description": "The type of works to list"},
+                    "applies_to_part": {"type": "array", "items": {"type": "string"}, "description": "The part IDs of the works to list"},
+                    "created_by": {"type": "array", "items": {"type": "string"}, "description": "The user IDs of the creators of the works to list"},
+                    "owned_by": {"type": "array", "items": {"type": "string"}, "description": "The user IDs of the owners of the works to list"},
+                    "stage": {"type": "array", "items": {"type": "string"}, "description": "The stage IDs of the works to list"},
+                    "state": {"type": "array", "items": {"type": "string"}, "description": "The state IDs of the works to list"},
+                    "limit": {"type": "integer", "description": "The maximum number of works to list"},
+                },
+                "required": [],
+            },
+        ),
+        types.Tool(
+            name="create_part",
+            description="Create a new part in DevRev",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "type": {"type": "string", "enum": ["enhancement"]},
+                    "name": {"type": "string"},
+                    "owned_by": {"type": "array", "items": {"type": "string"}, "description": "The user IDs of the owners of the part"},
+                    "parent_part": {"type": "array", "items": {"type": "string"}, "description": "The part IDs of the parent parts"},
+                    "description": {"type": "string", "description": "The description of the part"},
+                },
+                "required": ["type", "name", "owned_by", "parent_part"],
             },
         ),
     ]
@@ -117,6 +158,26 @@ async def handle_call_tool(
             types.TextContent(
                 type="text",
                 text=f"Search results for '{query}':\n{search_results}"
+            )
+        ]
+    elif name == "get_current_user":
+        response = make_devrev_request(
+            "dev-users.self",
+            {}
+        )
+        if response.status_code != 200:
+            error_text = response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"Get current user failed with status {response.status_code}: {error_text}"
+                )
+            ]
+        user_info = response.json()
+        return [
+            types.TextContent(
+                type="text",
+                text=f"Current user information: {user_info}"
             )
         ]
     elif name == "get_object":
@@ -237,6 +298,109 @@ async def handle_call_tool(
             types.TextContent(
                 type="text",
                 text=f"Object updated successfully: {id}"
+            )
+        ]
+    elif name == "list_works":
+        if not arguments:
+            raise ValueError("Missing arguments")
+
+        payload = {}
+
+        type = arguments.get("type")
+        if type:
+            payload["type"] = type
+
+        applies_to_part = arguments.get("applies_to_part")
+        if applies_to_part:
+            payload["applies_to_part"] = applies_to_part
+
+        created_by = arguments.get("created_by")
+        if created_by:
+            payload["created_by"] = created_by
+
+        owned_by = arguments.get("owned_by")
+        if owned_by:
+            payload["owned_by"] = owned_by
+
+        stage = arguments.get("stage")
+        if stage:
+            payload["stage"]["name"] = stage
+
+        state = arguments.get("state")
+        if state:
+            payload["state"] = state
+
+        limit = arguments.get("limit")
+        if limit:
+            payload["limit"] = limit
+
+        response = make_devrev_request(
+            "works.list",
+            payload
+        )
+
+        if response.status_code != 200:
+            error_text = response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"List works failed with status {response.status_code}: {error_text}"
+                )
+            ]
+        return [
+            types.TextContent(
+                type="text",
+                text=f"Works listed successfully: {response.json()}"
+            )
+        ]
+    elif name == "create_part":
+        if not arguments:
+            raise ValueError("Missing arguments")
+
+        payload = {}
+
+        type = arguments.get("type")
+        if not type:
+            raise ValueError("Missing type parameter")
+        payload["type"] = type
+
+        name = arguments.get("name")
+        if not name:
+            raise ValueError("Missing name parameter")
+        payload["name"] = name
+
+        owned_by = arguments.get("owned_by")
+        if not owned_by:
+            raise ValueError("Missing owned_by parameter")
+        payload["owned_by"] = owned_by
+
+        parent_part = arguments.get("parent_part")
+        if not parent_part:
+            raise ValueError("Missing parent_part parameter")
+        payload["parent_part"] = parent_part
+        
+        description = arguments.get("description")
+        if description:
+            payload["description"] = description
+
+        response = make_devrev_request(
+            "parts.create",
+            payload
+        )
+
+        if response.status_code != 201:
+            error_text = response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"Create part failed with status {response.status_code}: {error_text}"
+                )
+            ]
+        
+        return [
+            types.TextContent(
+                type="text",
+                text=f"Part created successfully: {response.json()}"
             )
         ]
     else:

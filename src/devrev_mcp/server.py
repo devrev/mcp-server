@@ -38,34 +38,34 @@ async def handle_list_tools() -> list[types.Tool]:
             },
         ),
         types.Tool(
-            name="get_object",
-            description="Get all information about a DevRev issue and ticket using its ID",
+            name="get_work",
+            description="Get all information about a DevRev work item (issue and ticket) using its ID",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "id": {"type": "string"},
+                    "id": {"type": "string", "description": "The DevRev ID of the work item"},
                 },
                 "required": ["id"],
             },
         ),
         types.Tool(
-            name="create_object",
-            description="Create a new isssue or ticket in DevRev",
+            name="create_work",
+            description="Create a new work item (issue and ticket) in DevRev",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "type": {"type": "string", "enum": ["issue", "ticket"]},
                     "title": {"type": "string"},
                     "body": {"type": "string"},
-                    "applies_to_part": {"type": "string"},
-                    "owned_by": {"type": "array", "items": {"type": "string"}}
+                    "applies_to_part": {"type": "string", "description": "The DevRev ID of the part to which the work item applies"},
+                    "owned_by": {"type": "array", "items": {"type": "string"}, "description": "The DevRev IDs of the users who are assigned to the work item"}
                 },
                 "required": ["type", "title", "applies_to_part"],
             },
         ),
         types.Tool(
-            name="update_object",
-            description="Update an existing issue or ticket in DevRev",
+            name="update_work",
+            description="Update an existing work item (issue and ticket) in DevRev",
             inputSchema={
                 "type": "object",
                 "properties": {

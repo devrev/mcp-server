@@ -73,8 +73,27 @@ async def handle_list_tools() -> list[types.Tool]:
                     "id": {"type": "string"},
                     "title": {"type": "string"},
                     "body": {"type": "string"},
+                    "applies_to_part": {"type": "string", "description": "The DevRev ID of the part to which the work item applies"},
+                    "owned_by": {"type": "array", "items": {"type": "string"}, "description": "The DevRev IDs of the users who are assigned to the work item"},
+                    "sprint": {"type": "string", "description": "The sprint ID to associate the issue or ticket with."},
                 },
                 "required": ["id", "type"],
+            },
+        ),
+        types.Tool(
+            name="get_sprints",
+            description="Get active or planned sprints for a given part ID",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "ancestor_part_id": {"type": "string", "description": "The ID of the part to get the sprints for."},
+                    "state": {
+                        "type": "string",
+                        "enum": ["active", "planned"],
+                        "description": "The state of the sprints to get. When the state is not provided in query, the tool will get the active sprints."
+                    },
+                },
+                "required": ["ancestor_part_id"],
             },
         ),
     ]

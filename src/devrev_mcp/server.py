@@ -120,7 +120,10 @@ async def handle_call_tool(
 
         response = make_devrev_request(
             "search.hybrid",
-            {"query": query, "namespace": namespace}
+            {
+                "query": query, 
+                "namespace": namespace
+            }
         )
         if response.status_code != 200:
             error_text = response.text
@@ -138,7 +141,7 @@ async def handle_call_tool(
                 text=f"Search results for '{query}':\n{search_results}"
             )
         ]
-    elif name == "get_object":
+    elif name == "get_work":
         if not arguments:
             raise ValueError("Missing arguments")
 
@@ -148,7 +151,9 @@ async def handle_call_tool(
         
         response = make_devrev_request(
             "works.get",
-            {"id": id}
+            {
+                "id": id
+            }
         )
         if response.status_code != 200:
             error_text = response.text
@@ -166,13 +171,12 @@ async def handle_call_tool(
                 text=f"Object information for '{id}':\n{object_info}"
             )
         ]
-    elif name == "create_object":
+    elif name == "create_work":
         if not arguments:
             raise ValueError("Missing arguments")
 
-        # Mandatory fields
-        object_type = arguments.get("type")
-        if not object_type:
+        type = arguments.get("type")
+        if not type:
             raise ValueError("Missing type parameter")
 
         title = arguments.get("title")
@@ -183,14 +187,13 @@ async def handle_call_tool(
         if not applies_to_part:
             raise ValueError("Missing applies_to_part parameter")
 
-        # Optional fields
         body = arguments.get("body", "")
         owned_by = arguments.get("owned_by", [])
 
         response = make_devrev_request(
             "works.create",
             {
-                "type": object_type,
+                "type": type,
                 "title": title,
                 "body": body,
                 "applies_to_part": applies_to_part,
@@ -212,8 +215,7 @@ async def handle_call_tool(
                 text=f"Object created successfully: {response.json()}"
             )
         ]
-    elif name == "update_object":
-        # Update mandatory fields
+    elif name == "update_work":
         if not arguments:
             raise ValueError("Missing arguments")
 
@@ -221,28 +223,27 @@ async def handle_call_tool(
         if not id:
             raise ValueError("Missing id parameter")
         
-        object_type = arguments.get("type")
-        if not object_type:
+        type = arguments.get("type")
+        if not type:
             raise ValueError("Missing type parameter")
         
-        # Update title and body
         title = arguments.get("title")
         body = arguments.get("body")
-        
-        # Build request payload with only the fields that have values
-        update_payload = {"id": id, "type": object_type}
+        sprint = arguments.get("sprint")
+
+        payload = {"id": id, "type": type}
         if title:
-            update_payload["title"] = title
+            payload["title"] = title
         if body:
-            update_payload["body"] = body
+            payload["body"] = body
+        if sprint:
+            payload["sprint"] = sprint
             
-        # Make devrev request to update the object
         response = make_devrev_request(
             "works.update",
-            update_payload
+            payload
         )
 
-        # Check if the request was successful
         if response.status_code != 200:
             error_text = response.text
             return [
@@ -256,6 +257,42 @@ async def handle_call_tool(
             types.TextContent(
                 type="text",
                 text=f"Object updated successfully: {id}"
+            )
+        ]
+    elif name == "get_sprints":
+        if not arguments:
+            raise ValueError("Missing arguments")
+
+        ancestor_part_id = arguments.get("ancestor_part_id")
+        if not ancestor_part_id:
+            raise ValueError("Missing ancestor_part_id parameter")
+        
+        state = arguments.get("state")
+        if not state:
+            state = "active"
+        
+        response = make_devrev_request(
+            "vistas.groups.list",
+            {
+                "ancestor_part": [ancestor_part_id],
+                "group_object_type": ["work"],
+                "state": [state]
+            }
+        )
+        if response.status_code != 200:
+            error_text = response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"Get sprints failed with status {response.status_code}: {error_text}"
+                )
+            ]
+        
+        sprints = response.json().get("vista_group", [])
+        return [
+            types.TextContent(
+                type="text",
+                text=f"Sprints for '{ancestor_part_id}':\n{sprints}"
             )
         ]
     else:

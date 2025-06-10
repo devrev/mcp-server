@@ -4,6 +4,10 @@
 
 A Model Context Protocol server for DevRev. It is used to search and retrieve information using the DevRev APIs.
 
+<a href="https://glama.ai/mcp/servers/@devrev/mcp-server">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@devrev/mcp-server/badge" alt="DevRev Server MCP server" />
+</a>
+
 ## Tools
 
 - `search`: Search for information using the DevRev search API with the provided query and namespace.

@@ -74,9 +74,26 @@ async def handle_list_tools() -> list[types.Tool]:
                     "title": {"type": "string"},
                     "body": {"type": "string"},
                     "applies_to_part": {"type": "string", "description": "The DevRev ID of the part to which the work item applies"},
+                    "modified_by": {"type": "array", "items": {"type": "string"}, "description": "The DevRev IDs of the users who modified the work item"},
                     "owned_by": {"type": "array", "items": {"type": "string"}, "description": "The DevRev IDs of the users who are assigned to the work item"},
                 },
                 "required": ["id", "type"],
+            },
+        ),
+        types.Tool(
+            name="list_works",
+            description="List all work items (issues, tickets) in DevRev",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "type": {"type": "array", "items": {"type": "string", "enum": ["issue", "ticket"]}, "description": "The type of works to list"},
+                    "applies_to_part": {"type": "array", "items": {"type": "string"}, "description": "The part IDs of the works to list"},
+                    "created_by": {"type": "array", "items": {"type": "string"}, "description": "The user IDs of the creators of the works to list"},
+                    "owned_by": {"type": "array", "items": {"type": "string"}, "description": "The user IDs of the owners of the works to list"},
+                    "state": {"type": "array", "items": {"type": "string", "enum": ["open", "closed", "in_progress"]}, "description": "The state names of the works to list"},
+                    "modified_by": {"type": "array", "items": {"type": "string"}, "description": "The user IDs of the users who modified the works to list"},
+                },
+                "required": ["type"],
             },
         ),
         types.Tool(
@@ -118,6 +135,21 @@ async def handle_list_tools() -> list[types.Tool]:
                     "target_start_date": {"type": "string", "description": "The target start date of the part, for example: 2025-06-03T00:00:00Z"},
                 },
                 "required": ["id", "type"],
+            },
+        ),
+        types.Tool(
+            name="list_parts",
+            description="List all parts (enhancements) in DevRev",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "type": {"type": "string", "enum": ["enhancement"], "description": "The type of parts to list"},
+                    "owned_by": {"type": "array", "items": {"type": "string"}, "description": "The DevRev IDs of the users assigned to the parts to list"},
+                    "parent_part": {"type": "array", "items": {"type": "string"}, "description": "The DevRev IDs of the parent parts to of the parts to list"},
+                    "created_by": {"type": "array", "items": {"type": "string"}, "description": "The DevRev IDs of the users who created the parts to list"},
+                    "modified_by": {"type": "array", "items": {"type": "string"}, "description": "The DevRev IDs of the users who modified the parts to list"},
+                },
+                "required": ["type"],
             },
         ),
     ]
@@ -241,27 +273,39 @@ async def handle_call_tool(
     elif name == "update_work":
         if not arguments:
             raise ValueError("Missing arguments")
+        
+        payload = {}
 
         id = arguments.get("id")
         if not id:
             raise ValueError("Missing id parameter")
+        payload["id"] = id
         
         type = arguments.get("type")
         if not type:
             raise ValueError("Missing type parameter")
-        
-        title = arguments.get("title")
-        body = arguments.get("body")
-        sprint = arguments.get("sprint")
+        payload["type"] = type
 
-        payload = {"id": id, "type": type}
+        title = arguments.get("title")
         if title:
             payload["title"] = title
+
+        body = arguments.get("body", "")
         if body:
             payload["body"] = body
-        if sprint:
-            payload["sprint"] = sprint
-            
+
+        modified_by = arguments.get("modified_by")
+        if modified_by:
+            payload["modified_by"] = modified_by
+
+        owned_by = arguments.get("owned_by")
+        if owned_by:
+            payload["owned_by"] = owned_by
+
+        applies_to_part = arguments.get("applies_to_part", [])
+        if applies_to_part:
+            payload["applies_to_part"] = applies_to_part
+
         response = make_devrev_request(
             "works.update",
             payload
@@ -280,6 +324,53 @@ async def handle_call_tool(
             types.TextContent(
                 type="text",
                 text=f"Object updated successfully: {id}"
+            )
+        ]
+    elif name == "list_works":
+        payload = {}
+
+        type = arguments.get("type")
+        if not type:
+            raise ValueError("Missing type parameter")
+        payload["type"] = type
+
+        applies_to_part = arguments.get("applies_to_part")
+        if applies_to_part:
+            payload["applies_to_part"] = applies_to_part
+
+        created_by = arguments.get("created_by")
+        if created_by:
+            payload["created_by"] = created_by
+
+        modified_by = arguments.get("modified_by")
+        if modified_by:
+            payload["modified_by"] = modified_by
+
+        owned_by = arguments.get("owned_by")
+        if owned_by:
+            payload["owned_by"] = owned_by
+
+        state = arguments.get("state")
+        if state:
+            payload["state"] = state
+
+        response = make_devrev_request(
+            "works.list",
+            payload
+        )
+
+        if response.status_code != 200:
+            error_text = response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"List works failed with status {response.status_code}: {error_text}"
+                )
+            ]
+        return [
+            types.TextContent(
+                type="text",
+                text=f"Works listed successfully: {response.json()}"
             )
         ]
     elif name == "get_part":
@@ -416,6 +507,53 @@ async def handle_call_tool(
             types.TextContent(
                 type="text",
                 text=f"Part updated successfully: {id}"
+            )
+        ]
+    elif name == "list_parts":
+        if not arguments:
+            raise ValueError("Missing arguments")
+
+        payload = {}
+
+        type = arguments.get("type")
+        if not type:
+            raise ValueError("Missing type parameter")
+        payload["type"] = type
+        
+        owned_by = arguments.get("owned_by")
+        if owned_by:
+            payload["owned_by"] = owned_by
+        
+        parent_part = arguments.get("parent_part")
+        if parent_part:
+            payload["parent_part"] = {"parts": parent_part}
+        
+        created_by = arguments.get("created_by")
+        if created_by:
+            payload["created_by"] = created_by
+        
+        modified_by = arguments.get("modified_by")
+        if modified_by:
+            payload["modified_by"] = modified_by
+        
+        response = make_devrev_request(
+            "parts.list",
+            payload
+        )
+        
+        if response.status_code != 200:
+            error_text = response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"List parts failed with status {response.status_code}: {error_text}"
+                )
+            ]
+        
+        return [
+            types.TextContent(
+                type="text",
+                text=f"Parts listed successfully: {response.json()}"
             )
         ]
     else:

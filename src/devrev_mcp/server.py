@@ -32,7 +32,7 @@ async def handle_list_tools() -> list[types.Tool]:
                 "type": "object",
                 "properties": {
                     "query": {"type": "string"},
-                    "namespace": {"type": "string", "enum": ["article", "issue", "ticket", "part", "dev_user"]},
+                    "namespace": {"type": "string", "enum": ["article", "issue", "ticket", "part", "dev_user", "account"]},
                 },
                 "required": ["query", "namespace"],
             },
@@ -92,6 +92,55 @@ async def handle_list_tools() -> list[types.Tool]:
                     "owned_by": {"type": "array", "items": {"type": "string"}, "description": "The user IDs of the owners of the works to list"},
                     "state": {"type": "array", "items": {"type": "string", "enum": ["open", "closed", "in_progress"]}, "description": "The state names of the works to list"},
                     "modified_by": {"type": "array", "items": {"type": "string"}, "description": "The user IDs of the users who modified the works to list"},
+                    "sort_by": {"type": "array", "items": {"type": "string", "enum": ["target_start_date:asc", "target_start_date:desc", "target_close_date:asc", "target_close_date:desc", "actual_start_date:asc", "actual_start_date:desc", "actual_close_date:asc", "actual_close_date:desc", "created_date:asc", "created_date:desc"]}, "description": "The field (and the order) to sort the works by, in the sequence of the array elements"},
+                    "target_close_date": {
+                        "type": "object", 
+                        "properties": {
+                            "after": {"type": "string", "description": "The start date of the target close date range, for example: 2025-06-03T00:00:00Z"},
+                            "before": {"type": "string", "description": "The end date of the target close date range, for example: 2025-06-03T00:00:00Z"},
+                        }, 
+                        "required": ["after", "before"]
+                    },
+                    "target_start_date": {
+                        "type": "object",
+                        "properties": {
+                            "after": {"type": "string", "description": "The start date of the target start date range, for example: 2025-06-03T00:00:00Z"},
+                            "before": {"type": "string", "description": "The end date of the target start date range, for example: 2025-06-03T00:00:00Z"},
+                        }, 
+                        "required": ["after", "before"]
+                    },
+                    "actual_close_date": {
+                        "type": "object",
+                        "properties": {
+                            "after": {"type": "string", "description": "The start date of the actual close date range, for example: 2025-06-03T00:00:00Z"},
+                            "before": {"type": "string", "description": "The end date of the actual close date range, for example: 2025-06-03T00:00:00Z"},
+                        }, 
+                        "required": ["after", "before"]
+                    },
+                    "actual_start_date": {
+                        "type": "object",
+                        "properties": {
+                            "after": {"type": "string", "description": "The start date of the actual start date range, for example: 2025-06-03T00:00:00Z"},
+                            "before": {"type": "string", "description": "The end date of the actual start date range, for example: 2025-06-03T00:00:00Z"},
+                        }, 
+                        "required": ["after", "before"]
+                    },
+                    "created_date": {
+                        "type": "object",
+                        "properties": {
+                            "after": {"type": "string", "description": "The start date of the created date range, for example: 2025-06-03T00:00:00Z"},
+                            "before": {"type": "string", "description": "The end date of the created date range, for example: 2025-06-03T00:00:00Z"},
+                        }, 
+                        "required": ["after", "before"]
+                    },
+                    "modified_date": {
+                        "type": "object",
+                        "properties": {
+                            "after": {"type": "string", "description": "The start date of the modified date range, for example: 2025-06-03T00:00:00Z"},
+                            "before": {"type": "string", "description": "The end date of the modified date range, for example: 2025-06-03T00:00:00Z"},
+                        }, 
+                        "required": ["after", "before"]
+                    },
                 },
                 "required": ["type"],
             },
@@ -148,6 +197,39 @@ async def handle_list_tools() -> list[types.Tool]:
                     "parent_part": {"type": "array", "items": {"type": "string"}, "description": "The DevRev IDs of the parent parts to of the parts to list"},
                     "created_by": {"type": "array", "items": {"type": "string"}, "description": "The DevRev IDs of the users who created the parts to list"},
                     "modified_by": {"type": "array", "items": {"type": "string"}, "description": "The DevRev IDs of the users who modified the parts to list"},
+                    "sort_by": {"type": "array", "items": {"type": "string", "enum": ["target_close_date:asc", "target_close_date:desc", "target_start_date:asc", "target_start_date:desc", "actual_close_date:asc", "actual_close_date:desc", "actual_start_date:asc", "actual_start_date:desc", "created_date:asc", "created_date:desc", "modified_date:asc", "modified_date:desc"]}, "description": "The field (and the order) to sort the parts by, in the sequence of the array elements"},
+                    "target_close_date": {
+                        "type": "object",
+                        "properties": {
+                            "after": {"type": "string", "description": "The start date of the target close date range, for example: 2025-06-03T00:00:00Z"},
+                            "before": {"type": "string", "description": "The end date of the target close date range, for example: 2025-06-03T00:00:00Z"},
+                        }, 
+                        "required": ["after", "before"]
+                    },
+                    "target_start_date": {
+                        "type": "object",
+                        "properties": {
+                            "after": {"type": "string", "description": "The start date of the target start date range, for example: 2025-06-03T00:00:00Z"},
+                            "before": {"type": "string", "description": "The end date of the target start date range, for example: 2025-06-03T00:00:00Z"},
+                        }, 
+                        "required": ["after", "before"]
+                    },
+                    "actual_close_date": {
+                        "type": "object",
+                        "properties": {
+                            "after": {"type": "string", "description": "The start date of the actual close date range, for example: 2025-06-03T00:00:00Z"},
+                            "before": {"type": "string", "description": "The end date of the actual close date range, for example: 2025-06-03T00:00:00Z"},
+                        }, 
+                        "required": ["after", "before"]
+                    },
+                    "actual_start_date": {
+                        "type": "object",
+                        "properties": {
+                            "after": {"type": "string", "description": "The start date of the actual start date range, for example: 2025-06-03T00:00:00Z"},
+                            "before": {"type": "string", "description": "The end date of the actual start date range, for example: 2025-06-03T00:00:00Z"},
+                        }, 
+                        "required": ["after", "before"]
+                    },
                 },
                 "required": ["type"],
             },
@@ -354,6 +436,34 @@ async def handle_call_tool(
         if state:
             payload["state"] = state
 
+        sort_by = arguments.get("sort_by")
+        if sort_by:
+            payload["sort_by"] = sort_by
+
+        target_close_date = arguments.get("target_close_date")
+        if target_close_date:
+            payload["target_close_date"] = {"type": "range", "after": target_close_date["after"], "before": target_close_date["before"]}
+        
+        target_start_date = arguments.get("target_start_date")
+        if target_start_date:
+            payload["issue"] = {"target_start_date": {"type": "range", "after": target_start_date["after"], "before": target_start_date["before"]}}
+
+        actual_close_date = arguments.get("actual_close_date")
+        if actual_close_date:
+            payload["actual_close_date"] = {"type": "range", "after": actual_close_date["after"], "before": actual_close_date["before"]}
+
+        actual_start_date = arguments.get("actual_start_date")
+        if actual_start_date:
+            payload["issue"] = {"actual_start_date":{"type": "range", "after": actual_start_date["after"], "before": actual_start_date["before"]}}
+
+        created_date = arguments.get("created_date")
+        if created_date:
+            payload["created_date"] = {"type": "range", "after": created_date["after"], "before": created_date["before"]}
+
+        modified_date = arguments.get("modified_date")
+        if modified_date:
+            payload["modified_date"] = {"type": "range", "after": modified_date["after"], "before": modified_date["before"]}
+
         response = make_devrev_request(
             "works.list",
             payload
@@ -536,6 +646,26 @@ async def handle_call_tool(
         if modified_by:
             payload["modified_by"] = modified_by
         
+        sort_by = arguments.get("sort_by")
+        if sort_by:
+            payload["sort_by"] = sort_by
+        
+        target_close_date = arguments.get("target_close_date")
+        if target_close_date:
+            payload["enhancement"] = {"target_close_date": {"after": target_close_date["after"], "before": target_close_date["before"]}}
+        
+        target_start_date = arguments.get("target_start_date")
+        if target_start_date:
+            payload["enhancement"] = {"target_start_date": {"after": target_start_date["after"], "before": target_start_date["before"]}}
+
+        actual_close_date = arguments.get("actual_close_date")
+        if actual_close_date:
+            payload["enhancement"] = {"actual_close_date": {"after": actual_close_date["after"], "before": actual_close_date["before"]}}
+        
+        actual_start_date = arguments.get("actual_start_date")
+        if actual_start_date:
+            payload["enhancement"] = {"actual_start_date": {"after": actual_start_date["after"], "before": actual_start_date["before"]}}
+                
         response = make_devrev_request(
             "parts.list",
             payload

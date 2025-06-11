@@ -26,6 +26,11 @@ async def handle_list_tools() -> list[types.Tool]:
     """
     return [
         types.Tool(
+            name="get_current_user",
+            description="Fetch the current DevRev user details. When the user specifies 'me' in the query, this tool should be called to get the user details.",
+            inputSchema={"type": "object", "properties": {}},
+        ),
+        types.Tool(
             name="search",
             description="Search DevRev using the provided query",
             inputSchema={
@@ -93,6 +98,7 @@ async def handle_list_tools() -> list[types.Tool]:
                     "state": {"type": "array", "items": {"type": "string", "enum": ["open", "closed", "in_progress"]}, "description": "The state names of the works to list"},
                     "modified_by": {"type": "array", "items": {"type": "string"}, "description": "The user IDs of the users who modified the works to list"},
                     "sort_by": {"type": "array", "items": {"type": "string", "enum": ["target_start_date:asc", "target_start_date:desc", "target_close_date:asc", "target_close_date:desc", "actual_start_date:asc", "actual_start_date:desc", "actual_close_date:asc", "actual_close_date:desc", "created_date:asc", "created_date:desc"]}, "description": "The field (and the order) to sort the works by, in the sequence of the array elements"},
+                    "accounts": {"type": "array", "items": {"type": "string"}, "description": "The account IDs of the accounts filter on works to list"},
                     "target_close_date": {
                         "type": "object", 
                         "properties": {
@@ -198,6 +204,7 @@ async def handle_list_tools() -> list[types.Tool]:
                     "created_by": {"type": "array", "items": {"type": "string"}, "description": "The DevRev IDs of the users who created the parts to list"},
                     "modified_by": {"type": "array", "items": {"type": "string"}, "description": "The DevRev IDs of the users who modified the parts to list"},
                     "sort_by": {"type": "array", "items": {"type": "string", "enum": ["target_close_date:asc", "target_close_date:desc", "target_start_date:asc", "target_start_date:desc", "actual_close_date:asc", "actual_close_date:desc", "actual_start_date:asc", "actual_start_date:desc", "created_date:asc", "created_date:desc", "modified_date:asc", "modified_date:desc"]}, "description": "The field (and the order) to sort the parts by, in the sequence of the array elements"},
+                    "accounts": {"type": "array", "items": {"type": "string"}, "description": "The account IDs of the accounts filter on parts to list"},
                     "target_close_date": {
                         "type": "object",
                         "properties": {
@@ -244,7 +251,28 @@ async def handle_call_tool(
     Handle tool execution requests.
     Tools can modify server state and notify clients of changes.
     """
-    if name == "search":
+    if name == "get_current_user":
+        response = make_devrev_request(
+            "dev-users.self",
+            {}
+        )
+
+        if response.status_code != 200:
+            error_text = response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"Get current user failed with status {response.status_code}: {error_text}"
+                )
+            ]
+
+        return [
+            types.TextContent(
+                type="text",
+                text=f"Current DevRev user details: {response.json()}"
+            )
+        ]
+    elif name == "search":
         if not arguments:
             raise ValueError("Missing arguments")
 
@@ -410,7 +438,8 @@ async def handle_call_tool(
         ]
     elif name == "list_works":
         payload = {}
-
+        payload["issue"] = {}
+        
         type = arguments.get("type")
         if not type:
             raise ValueError("Missing type parameter")
@@ -440,13 +469,17 @@ async def handle_call_tool(
         if sort_by:
             payload["sort_by"] = sort_by
 
+        accounts = arguments.get("accounts")
+        if accounts:
+            payload["issue"]["accounts"] = accounts
+
         target_close_date = arguments.get("target_close_date")
         if target_close_date:
             payload["target_close_date"] = {"type": "range", "after": target_close_date["after"], "before": target_close_date["before"]}
         
         target_start_date = arguments.get("target_start_date")
         if target_start_date:
-            payload["issue"] = {"target_start_date": {"type": "range", "after": target_start_date["after"], "before": target_start_date["before"]}}
+            payload["issue"]["target_start_date"] = {"type": "range", "after": target_start_date["after"], "before": target_start_date["before"]}
 
         actual_close_date = arguments.get("actual_close_date")
         if actual_close_date:
@@ -454,7 +487,7 @@ async def handle_call_tool(
 
         actual_start_date = arguments.get("actual_start_date")
         if actual_start_date:
-            payload["issue"] = {"actual_start_date":{"type": "range", "after": actual_start_date["after"], "before": actual_start_date["before"]}}
+            payload["issue"]["actual_start_date"] = {"type": "range", "after": actual_start_date["after"], "before": actual_start_date["before"]}
 
         created_date = arguments.get("created_date")
         if created_date:
@@ -624,6 +657,7 @@ async def handle_call_tool(
             raise ValueError("Missing arguments")
 
         payload = {}
+        payload["enhancement"] = {}
 
         type = arguments.get("type")
         if not type:
@@ -650,22 +684,26 @@ async def handle_call_tool(
         if sort_by:
             payload["sort_by"] = sort_by
         
+        accounts = arguments.get("accounts")
+        if accounts:
+            payload["enhancement"]["accounts"] = accounts
+        
         target_close_date = arguments.get("target_close_date")
         if target_close_date:
-            payload["enhancement"] = {"target_close_date": {"after": target_close_date["after"], "before": target_close_date["before"]}}
+            payload["enhancement"]["target_close_date"] = {"after": target_close_date["after"], "before": target_close_date["before"]}
         
         target_start_date = arguments.get("target_start_date")
         if target_start_date:
-            payload["enhancement"] = {"target_start_date": {"after": target_start_date["after"], "before": target_start_date["before"]}}
+            payload["enhancement"]["target_start_date"] = {"after": target_start_date["after"], "before": target_start_date["before"]}
 
         actual_close_date = arguments.get("actual_close_date")
         if actual_close_date:
-            payload["enhancement"] = {"actual_close_date": {"after": actual_close_date["after"], "before": actual_close_date["before"]}}
+            payload["enhancement"]["actual_close_date"] = {"after": actual_close_date["after"], "before": actual_close_date["before"]}
         
         actual_start_date = arguments.get("actual_start_date")
         if actual_start_date:
-            payload["enhancement"] = {"actual_start_date": {"after": actual_start_date["after"], "before": actual_start_date["before"]}}
-                
+            payload["enhancement"]["actual_start_date"] = {"after": actual_start_date["after"], "before": actual_start_date["before"]}
+
         response = make_devrev_request(
             "parts.list",
             payload

@@ -117,6 +117,7 @@ async def handle_list_tools() -> list[types.Tool]:
                             "after": {"type": "string", "description": "The start date of the target start date range, for example: 2025-06-03T00:00:00Z"},
                             "before": {"type": "string", "description": "The end date of the target start date range, for example: 2025-06-03T00:00:00Z"},
                         }, 
+                        "description": "The target start date range can only be used for issues. Do not use this field for tickets.",
                         "required": ["after", "before"]
                     },
                     "actual_close_date": {
@@ -133,6 +134,7 @@ async def handle_list_tools() -> list[types.Tool]:
                             "after": {"type": "string", "description": "The start date of the actual start date range, for example: 2025-06-03T00:00:00Z"},
                             "before": {"type": "string", "description": "The end date of the actual start date range, for example: 2025-06-03T00:00:00Z"},
                         }, 
+                        "description": "The actual start date range can only be used for issues. Do not use this field for tickets.",
                         "required": ["after", "before"]
                     },
                     "created_date": {
@@ -444,7 +446,7 @@ async def handle_call_tool(
         payload = {}
         payload["issue"] = {}
         payload["ticket"] = {}
-
+        
         type = arguments.get("type")
         if not type:
             raise ValueError("Missing type parameter")
@@ -475,9 +477,12 @@ async def handle_call_tool(
             payload["sort_by"] = sort_by
 
         rev_orgs = arguments.get("rev_orgs")
-        if rev_orgs:
-            payload["ticket"]["rev_org"] = rev_orgs
-            payload["issue"]["rev_orgs"] = rev_orgs
+        if rev_orgs and rev_orgs != []:
+            if 'ticket' in type:
+                payload["ticket"]["rev_org"] = rev_orgs
+
+            if 'issue' in type:
+                payload["issue"]["rev_orgs"] = rev_orgs
 
         target_close_date = arguments.get("target_close_date")
         if target_close_date:
@@ -485,7 +490,8 @@ async def handle_call_tool(
         
         target_start_date = arguments.get("target_start_date")
         if target_start_date:
-            payload["issue"]["target_start_date"] = {"type": "range", "after": target_start_date["after"], "before": target_start_date["before"]}
+            if 'issue' in type:
+                payload["issue"]["target_start_date"] = {"type": "range", "after": target_start_date["after"], "before": target_start_date["before"]}
 
         actual_close_date = arguments.get("actual_close_date")
         if actual_close_date:
@@ -493,7 +499,8 @@ async def handle_call_tool(
 
         actual_start_date = arguments.get("actual_start_date")
         if actual_start_date:
-            payload["issue"]["actual_start_date"] = {"type": "range", "after": actual_start_date["after"], "before": actual_start_date["before"]}
+            if 'issue' in type:
+                payload["issue"]["actual_start_date"] = {"type": "range", "after": actual_start_date["after"], "before": actual_start_date["before"]}
 
         created_date = arguments.get("created_date")
         if created_date:
@@ -502,6 +509,12 @@ async def handle_call_tool(
         modified_date = arguments.get("modified_date")
         if modified_date:
             payload["modified_date"] = {"type": "range", "after": modified_date["after"], "before": modified_date["before"]}
+
+        if payload["issue"] == {}:
+            payload.pop("issue")
+
+        if payload["ticket"] == {}:
+            payload.pop("ticket")
 
         response = make_devrev_request(
             "works.list",
@@ -692,23 +705,31 @@ async def handle_call_tool(
         
         accounts = arguments.get("accounts")
         if accounts:
-            payload["enhancement"]["accounts"] = accounts
+            if 'enhancement' in type:
+                payload["enhancement"]["accounts"] = accounts
         
         target_close_date = arguments.get("target_close_date")
         if target_close_date:
-            payload["enhancement"]["target_close_date"] = {"after": target_close_date["after"], "before": target_close_date["before"]}
+            if 'enhancement' in type:
+                payload["enhancement"]["target_close_date"] = {"after": target_close_date["after"], "before": target_close_date["before"]}
         
         target_start_date = arguments.get("target_start_date")
         if target_start_date:
-            payload["enhancement"]["target_start_date"] = {"after": target_start_date["after"], "before": target_start_date["before"]}
+            if 'enhancement' in type:
+                payload["enhancement"]["target_start_date"] = {"after": target_start_date["after"], "before": target_start_date["before"]}
 
         actual_close_date = arguments.get("actual_close_date")
         if actual_close_date:
-            payload["enhancement"]["actual_close_date"] = {"after": actual_close_date["after"], "before": actual_close_date["before"]}
+            if 'enhancement' in type:
+                payload["enhancement"]["actual_close_date"] = {"after": actual_close_date["after"], "before": actual_close_date["before"]}
         
         actual_start_date = arguments.get("actual_start_date")
         if actual_start_date:
-            payload["enhancement"]["actual_start_date"] = {"after": actual_start_date["after"], "before": actual_start_date["before"]}
+            if 'enhancement' in type:
+                payload["enhancement"]["actual_start_date"] = {"after": actual_start_date["after"], "before": actual_start_date["before"]}
+
+        if payload["enhancement"] == {}:
+            payload.pop("enhancement")
 
         response = make_devrev_request(
             "parts.list",

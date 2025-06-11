@@ -37,7 +37,11 @@ async def handle_list_tools() -> list[types.Tool]:
                 "type": "object",
                 "properties": {
                     "query": {"type": "string"},
-                    "namespace": {"type": "string", "enum": ["article", "issue", "ticket", "part", "dev_user", "account"]},
+                    "namespace": {
+                        "type": "string", 
+                        "enum": ["article", "issue", "ticket", "part", "dev_user", "account", "rev_org"],
+                        "description": "The namespace to search in. Use this to specify the type of object to search for."
+                    },
                 },
                 "required": ["query", "namespace"],
             },
@@ -98,7 +102,8 @@ async def handle_list_tools() -> list[types.Tool]:
                     "state": {"type": "array", "items": {"type": "string", "enum": ["open", "closed", "in_progress"]}, "description": "The state names of the works to list"},
                     "modified_by": {"type": "array", "items": {"type": "string"}, "description": "The user IDs of the users who modified the works to list"},
                     "sort_by": {"type": "array", "items": {"type": "string", "enum": ["target_start_date:asc", "target_start_date:desc", "target_close_date:asc", "target_close_date:desc", "actual_start_date:asc", "actual_start_date:desc", "actual_close_date:asc", "actual_close_date:desc", "created_date:asc", "created_date:desc"]}, "description": "The field (and the order) to sort the works by, in the sequence of the array elements"},
-                    "accounts": {"type": "array", "items": {"type": "string"}, "description": "The account IDs of the accounts filter on works to list"},
+                    "accounts": {"type": "array", "items": {"type": "string"}, "description": "The account IDs of the customer accounts filter on Issues to list. Use this filter for issues that are related to a customer account."},
+                    "rev_orgs": {"type": "array", "items": {"type": "string"}, "description": "The rev_org IDs of the customer rev_orgs filter on Tickets to list. Use this filter for tickets that are related to a customer rev_org."},
                     "target_close_date": {
                         "type": "object", 
                         "properties": {
@@ -439,7 +444,8 @@ async def handle_call_tool(
     elif name == "list_works":
         payload = {}
         payload["issue"] = {}
-        
+        payload["ticket"] = {}
+
         type = arguments.get("type")
         if not type:
             raise ValueError("Missing type parameter")
@@ -472,6 +478,10 @@ async def handle_call_tool(
         accounts = arguments.get("accounts")
         if accounts:
             payload["issue"]["accounts"] = accounts
+
+        rev_org = arguments.get("rev_orgs")
+        if rev_org:
+            payload["ticket"]["rev_org"] = rev_org
 
         target_close_date = arguments.get("target_close_date")
         if target_close_date:

@@ -1,19 +1,30 @@
-# DevRev MCP server
+# DevRev MCP Server
 
 ## Overview
 
-A Model Context Protocol server for DevRev. It is used to search and retrieve information using the DevRev APIs.
+A Model Context Protocol server for DevRev. This server provides comprehensive access to DevRev's APIs, allowing you to manage work items (issues, tickets), parts (enhancements), search across your DevRev data, and retrieve user information.
 
 ## Tools
 
-- `search`: Search for information using the DevRev search API with the provided query and namespace.
-- `get_object`: Get all information about a DevRev issue or ticket using its ID.
-- `create_object`: Create a new issue or ticket in DevRev with specified properties.
-- `update_object`: Update an existing issue or ticket in DevRev by modifying its title or body content.
+### Search & Discovery
+- **`search`**: Search for information across DevRev using the search API with support for different namespaces (articles, issues, tickets, parts, dev_users, accounts, rev_orgs).
+- **`get_current_user`**: Fetch details about the currently authenticated DevRev user.
+
+### Work Items (Issues & Tickets)
+- **`get_work`**: Get comprehensive information about a specific DevRev work item using its ID.
+- **`create_work`**: Create new issues or tickets in DevRev with specified properties like title, body, assignees, and associated parts.
+- **`update_work`**: Update existing work items by modifying properties such as title, body, assignees, or associated parts.
+- **`list_works`**: List and filter work items based on various criteria like state, dates, assignees, parts, and more.
+
+### Parts (Enhancements)
+- **`get_part`**: Get detailed information about a specific part (enhancement) using its ID.
+- **`create_part`**: Create new parts (enhancements) with specified properties including name, description, assignees, and parent parts.
+- **`update_part`**: Update existing parts by modifying properties such as name, description, assignees, or target dates.
+- **`list_parts`**: List and filter parts based on various criteria like dates, assignees, parent parts, and more.
 
 ## Configuration
 
-### Get the DevRev API key
+### Get the DevRev API Key
 
 1. Go to https://app.devrev.ai/signup and create an account.
 2. Import your data from your existing data sources like Salesforce, Zendesk while following the instructions [here](https://devrev.ai/docs/import#available-sources).
@@ -65,3 +76,12 @@ On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
 ```
 
 </details>
+
+## Features
+
+- **Comprehensive Work Item Management**: Create, read, update, and list both issues and tickets
+- **Enhanced Part Management**: Full CRUD operations for parts (enhancements) including hierarchical relationships
+- **Advanced Search**: Search across multiple namespaces with hybrid search capabilities
+- **Flexible Filtering**: Advanced filtering options for listing work items and parts based on dates, assignees, states, and more
+- **User Context**: Access to current user information for personalized experiences
+- **Rich Data Support**: Handle complex relationships between work items, parts, users, and organizations

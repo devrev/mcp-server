@@ -96,11 +96,29 @@ async def handle_list_tools() -> list[types.Tool]:
                 "type": "object",
                 "properties": {
                     "type": {"type": "array", "items": {"type": "string", "enum": ["issue", "ticket"]}, "description": "The type of works to list"},
+                    "cursor": {
+                        "type": "object",
+                        "properties": {
+                            "next_cursor": {"type": "string", "description": "The cursor to use for pagination. If not provided, iteration begins from the first page."},
+                            "mode": {"type": "string", "enum": ["after", "before"], "description": "The mode to iterate after the cursor or before the cursor ."},
+                        },
+                        "required": ["next_cursor", "mode"],
+                        "description": "The cursor to use for pagination. If not provided, iteration begins from the first page. In the output you get next_cursor, use it and the correct mode to get the next or previous page. You can use these to loop through all the pages."
+                    },
                     "applies_to_part": {"type": "array", "items": {"type": "string"}, "description": "The part IDs of the works to list"},
                     "created_by": {"type": "array", "items": {"type": "string"}, "description": "The user IDs of the creators of the works to list"},
                     "owned_by": {"type": "array", "items": {"type": "string"}, "description": "The user IDs of the owners of the works to list"},
                     "state": {"type": "array", "items": {"type": "string", "enum": ["open", "closed", "in_progress"]}, "description": "The state names of the works to list"},
                     "modified_by": {"type": "array", "items": {"type": "string"}, "description": "The user IDs of the users who modified the works to list"},
+                    "sla_summary": {
+                        "type": "object",
+                        "properties": {
+                            "after": {"type": "string", "description": "The start date of the SLA summary range, for example: 2025-06-03T00:00:00Z"},
+                            "before": {"type": "string", "description": "The end date of the SLA summary range, for example: 2025-06-03T00:00:00Z"},
+                        },
+                        "required": ["after", "before"],
+                        "description": "Service Level Agreement summary filter on issues to list."
+                    },
                     "sort_by": {"type": "array", "items": {"type": "string", "enum": ["target_start_date:asc", "target_start_date:desc", "target_close_date:asc", "target_close_date:desc", "actual_start_date:asc", "actual_start_date:desc", "actual_close_date:asc", "actual_close_date:desc", "created_date:asc", "created_date:desc"]}, "description": "The field (and the order) to sort the works by, in the sequence of the array elements"},
                     "rev_orgs": {"type": "array", "items": {"type": "string"}, "description": "The rev_org IDs of the customer rev_orgs filter on Issues and Tickets to list. Use this filter for issues and tickets that are related to a customer rev_org."},
                     "target_close_date": {
@@ -205,6 +223,15 @@ async def handle_list_tools() -> list[types.Tool]:
                 "type": "object",
                 "properties": {
                     "type": {"type": "string", "enum": ["enhancement"], "description": "The type of parts to list"},
+                    "cursor": {
+                        "type": "object",
+                        "properties": {
+                            "next_cursor": {"type": "string", "description": "The cursor to use for pagination. If not provided, iteration begins from the first page."},
+                            "mode": {"type": "string", "enum": ["after", "before"], "description": "The mode to iterate after the cursor or before the cursor ."},
+                        },
+                        "required": ["next_cursor", "mode"],
+                        "description": "The cursor to use for pagination. If not provided, iteration begins from the first page. In the output you get next_cursor, use it and the correct mode to get the next or previous page. You can use these to loop through all the pages."
+                    },
                     "owned_by": {"type": "array", "items": {"type": "string"}, "description": "The DevRev IDs of the users assigned to the parts to list"},
                     "parent_part": {"type": "array", "items": {"type": "string"}, "description": "The DevRev IDs of the parent parts to of the parts to list"},
                     "created_by": {"type": "array", "items": {"type": "string"}, "description": "The DevRev IDs of the users who created the parts to list"},
@@ -452,6 +479,11 @@ async def handle_call_tool(
             raise ValueError("Missing type parameter")
         payload["type"] = type
 
+        cursor = arguments.get("cursor")
+        if cursor:
+            payload["cursor"] = cursor["next_cursor"]
+            payload["mode"] = cursor["mode"]
+
         applies_to_part = arguments.get("applies_to_part")
         if applies_to_part:
             payload["applies_to_part"] = applies_to_part
@@ -472,6 +504,10 @@ async def handle_call_tool(
         if state:
             payload["state"] = state
 
+        sla_summary = arguments.get("sla_summary")
+        if sla_summary:
+            payload["issue"]["sla_summary"] = {"target_time": {"type": "range", "after": sla_summary["after"], "before": sla_summary["before"]}}
+        
         sort_by = arguments.get("sort_by")
         if sort_by:
             payload["sort_by"] = sort_by
@@ -682,6 +718,11 @@ async def handle_call_tool(
         if not type:
             raise ValueError("Missing type parameter")
         payload["type"] = type
+        
+        cursor = arguments.get("cursor")
+        if cursor:
+            payload["cursor"] = cursor["next_cursor"]
+            payload["mode"] = cursor["mode"]
         
         owned_by = arguments.get("owned_by")
         if owned_by:

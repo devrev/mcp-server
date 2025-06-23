@@ -282,13 +282,13 @@ async def handle_list_tools() -> list[types.Tool]:
                 "properties": {
                     "channel": {
                         "type": "array",
-                        "items": {"type": "string"},
+                        "items": {"type": "string", "enum": ["amazon_connect", "google_meet", "offline", "other", "teams", "zoom"]},
                         "description": "Filters for meeting on specified channels"
                     },
                     "created_by": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "Filters for meetings created by the specified user(s)"
+                        "description": "Filters for meetings created by the specified user DevRev IDs"
                     },
                     "created_date": {
                         "type": "object",
@@ -351,12 +351,15 @@ async def handle_list_tools() -> list[types.Tool]:
                     },
                     "sort_by": {
                         "type": "array",
-                        "items": {"type": "string"},
-                        "description": "Fields to sort the meetings by and the direction to sort them"
+                        "items": {
+                            "type": "string",
+                            "enum": ["target_start_date:asc", "target_start_date:desc", "target_close_date:asc", "target_close_date:desc", "actual_start_date:asc", "actual_start_date:desc", "actual_close_date:asc", "actual_close_date:desc", "created_date:asc", "created_date:desc", "modified_date:asc", "modified_date:desc"]
+                        },
+                        "description": "The field (and the order) to sort the meetings by, in the sequence of the array elements"
                     },
                     "state": {
                         "type": "array",
-                        "items": {"type": "string"},
+                        "items": {"type": "string", "enum": ["cancelled", "completed", "no_show", "ongoing", "rejected", "scheduled", "rescheduled", "waiting"]},
                         "description": "Filters for meeting on specified state or outcomes"
                     }
                 }

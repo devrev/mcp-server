@@ -274,6 +274,97 @@ async def handle_list_tools() -> list[types.Tool]:
                 "required": ["type"],
             },
         ),
+        types.Tool(
+            name="list_meetings",
+            description="List meetings in DevRev",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "channel": {
+                        "type": "array",
+                        "items": {"type": "string", "enum": ["amazon_connect", "google_meet", "offline", "other", "teams", "zoom"]},
+                        "description": "Filters for meeting on specified channels"
+                    },
+                    "created_by": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Filters for meetings created by the specified user DevRev IDs"
+                    },
+                    "created_date": {
+                        "type": "object",
+                        "properties": {
+                            "after": {"type": "string", "description": "The start date of the created date range, for example: 2025-06-03T00:00:00Z"},
+                            "before": {"type": "string", "description": "The end date of the created date range, for example: 2025-06-03T00:00:00Z"}
+                        },
+                        "required": ["after", "before"]
+                    },
+                    "cursor": {
+                        "type": "object",
+                        "properties": {
+                            "next_cursor": {"type": "string", "description": "The cursor to use for pagination. If not provided, iteration begins from the first page."},
+                            "mode": {"type": "string", "enum": ["after", "before"], "description": "The mode to iterate after the cursor or before the cursor"}
+                        },
+                        "required": ["next_cursor", "mode"]
+                    },
+                    "ended_date": {
+                        "type": "object",
+                        "properties": {
+                            "after": {"type": "string", "description": "The start date of the ended date range, for example: 2025-06-03T00:00:00Z"},
+                            "before": {"type": "string", "description": "The end date of the ended date range, for example: 2025-06-03T00:00:00Z"}
+                        },
+                        "required": ["after", "before"]
+                    },
+                    "external_ref": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Filters for meetings with the provided external_ref(s)"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "The maximum number of meetings to return"
+                    },
+                    "members": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Filter for meeting on specified Member Ids"
+                    },
+                    "modified_date": {
+                        "type": "object",
+                        "properties": {
+                            "after": {"type": "string", "description": "The start date of the modified date range, for example: 2025-06-03T00:00:00Z"},
+                            "before": {"type": "string", "description": "The end date of the modified date range, for example: 2025-06-03T00:00:00Z"}
+                        },
+                        "required": ["after", "before"]
+                    },
+                    "organizer": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Filter for meeting on specified organizers"
+                    },
+                    "scheduled_date": {
+                        "type": "object",
+                        "properties": {
+                            "after": {"type": "string", "description": "The start date of the scheduled date range, for example: 2025-06-03T00:00:00Z"},
+                            "before": {"type": "string", "description": "The end date of the scheduled date range, for example: 2025-06-03T00:00:00Z"}
+                        },
+                        "required": ["after", "before"]
+                    },
+                    "sort_by": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": ["target_start_date:asc", "target_start_date:desc", "target_close_date:asc", "target_close_date:desc", "actual_start_date:asc", "actual_start_date:desc", "actual_close_date:asc", "actual_close_date:desc", "created_date:asc", "created_date:desc", "modified_date:asc", "modified_date:desc"]
+                        },
+                        "description": "The field (and the order) to sort the meetings by, in the sequence of the array elements"
+                    },
+                    "state": {
+                        "type": "array",
+                        "items": {"type": "string", "enum": ["cancelled", "completed", "no_show", "ongoing", "rejected", "scheduled", "rescheduled", "waiting"]},
+                        "description": "Filters for meeting on specified state or outcomes"
+                    }
+                }
+            }
+        ),
     ]
 
 @server.call_tool()
@@ -790,6 +881,85 @@ async def handle_call_tool(
             types.TextContent(
                 type="text",
                 text=f"Parts listed successfully: {response.json()}"
+            )
+        ]
+    elif name == "list_meetings":
+        if not arguments:
+            arguments = {}
+
+        payload = {}
+        
+        channel = arguments.get("channel")
+        if channel:
+            payload["channel"] = channel
+
+        created_by = arguments.get("created_by")
+        if created_by:
+            payload["created_by"] = created_by
+
+        created_date = arguments.get("created_date")
+        if created_date:
+            payload["created_date"] = {"type": "range", "after": created_date["after"], "before": created_date["before"]}
+
+        cursor = arguments.get("cursor")
+        if cursor:
+            payload["cursor"] = cursor["next_cursor"]
+            payload["mode"] = cursor["mode"]
+
+        ended_date = arguments.get("ended_date")
+        if ended_date:
+            payload["ended_date"] = {"type": "range", "after": ended_date["after"], "before": ended_date["before"]}
+
+        external_ref = arguments.get("external_ref")
+        if external_ref:
+            payload["external_ref"] = external_ref
+
+        limit = arguments.get("limit")
+        if limit:
+            payload["limit"] = limit
+
+        members = arguments.get("members")
+        if members:
+            payload["members"] = members
+
+        modified_date = arguments.get("modified_date")
+        if modified_date:
+            payload["modified_date"] = {"type": "range", "after": modified_date["after"], "before": modified_date["before"]}
+
+        organizer = arguments.get("organizer")
+        if organizer:
+            payload["organizer"] = organizer
+
+        scheduled_date = arguments.get("scheduled_date")
+        if scheduled_date:
+            payload["scheduled_date"] = {"type": "range", "after": scheduled_date["after"], "before": scheduled_date["before"]}
+
+        sort_by = arguments.get("sort_by")
+        if sort_by:
+            payload["sort_by"] = sort_by
+
+        state = arguments.get("state")
+        if state:
+            payload["state"] = state
+
+        response = make_devrev_request(
+            "meetings.list",
+            payload
+        )
+
+        if response.status_code != 200:
+            error_text = response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"List meetings failed with status {response.status_code}: {error_text}"
+                )
+            ]
+
+        return [
+            types.TextContent(
+                type="text",
+                text=f"Meetings listed successfully: {response.json()}"
             )
         ]
     else:

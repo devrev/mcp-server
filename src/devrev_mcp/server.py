@@ -1032,7 +1032,7 @@ async def handle_call_tool(
                     )
                 ]
 
-            current_stage_id = response.json().get("part", {}).get("stage", {}).get("stage", {}).get("id", {})
+            current_stage_id = response.json().get("part", {}).get("stage_v2", {}).get("stage", {}).get("id", {})
             leaf_type = response.json().get("part", {}).get("type", {})
             subtype = response.json().get("part", {}).get("subtype", {})
         else:

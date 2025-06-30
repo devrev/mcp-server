@@ -85,6 +85,7 @@ async def handle_list_tools() -> list[types.Tool]:
                     "applies_to_part": {"type": "string", "description": "The DevRev ID of the part to which the work item applies"},
                     "modified_by": {"type": "array", "items": {"type": "string"}, "description": "The DevRev IDs of the users who modified the work item"},
                     "owned_by": {"type": "array", "items": {"type": "string"}, "description": "The DevRev IDs of the users who are assigned to the work item"},
+                    "stage": {"type": "string", "description": "The stage name of the work item. Use valid_stage_transition tool to get the list of valid stages you an update to."},
                 },
                 "required": ["id", "type"],
             },
@@ -212,6 +213,7 @@ async def handle_list_tools() -> list[types.Tool]:
                     "description": {"type": "string", "description": "The description of the part"},
                     "target_close_date": {"type": "string", "description": "The target closed date of the part, for example: 2025-06-03T00:00:00Z"},
                     "target_start_date": {"type": "string", "description": "The target start date of the part, for example: 2025-06-03T00:00:00Z"},
+                    "stage": {"type": "string", "description": "The stage DevRev ID of the part. Use valid_stage_transition tool to get the list of valid stages you an update to."},
                 },
                 "required": ["id", "type"],
             },
@@ -365,6 +367,18 @@ async def handle_list_tools() -> list[types.Tool]:
                 }
             }
         ),
+        types.Tool(
+            name="valid_stage_transition",
+            description="gets a list of valid stage transition for a given work item (issue, ticket) or part (enhancement). Use this before updating stage of the work item or part to ensure the transition is valid.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "type": {"type": "string", "enum": ["issue", "ticket", "enhancement"]},
+                    "id": {"type": "string", "description": "The DevRev ID of the work item (issue, ticket) or part (enhancement)"},
+                },
+                "required": ["type", "id"]
+            }
+        )
     ]
 
 @server.call_tool()
@@ -539,6 +553,10 @@ async def handle_call_tool(
         applies_to_part = arguments.get("applies_to_part", [])
         if applies_to_part:
             payload["applies_to_part"] = applies_to_part
+
+        stage = arguments.get("stage")
+        if stage:
+            payload["stage"] = {"name": stage}
 
         response = make_devrev_request(
             "works.update",
@@ -778,6 +796,10 @@ async def handle_call_tool(
         if target_start_date:
             payload["target_start_date"] = target_start_date
 
+        stage = arguments.get("stage")
+        if stage:
+            payload["stage_v2"] = stage
+
         response = make_devrev_request(
             "parts.update",
             payload
@@ -961,6 +983,128 @@ async def handle_call_tool(
                 type="text",
                 text=f"Meetings listed successfully: {response.json()}"
             )
+        ]
+    elif name == "valid_stage_transition":
+        if not arguments:
+            raise ValueError("Missing arguments")
+
+        payload = {}
+
+        id = arguments.get("id")
+        if not id:
+            raise ValueError("Missing id parameter")
+        payload["id"] = id
+
+        type = arguments.get("type")
+        if not type:
+            raise ValueError("Missing type parameter")
+        payload["type"] = type
+
+        current_stage_id = None
+        leaf_type = None
+        subtype = None
+
+        if(type == "issue" or type == "ticket"):
+            response = make_devrev_request(
+                "works.get",
+                {
+                    "id": id
+                }
+            )
+
+            if response.status_code != 200:
+                error_text = response.text
+                return [
+                    types.TextContent(
+                        type="text",
+                        text=f"Get work item failed with status {response.status_code}: {error_text}"
+                    )
+                ]
+            
+            current_stage_id = response.json().get("work", {}).get("stage", {}).get("stage", {}).get("id", {})
+            leaf_type = response.json().get("work", {}).get("type", {})
+            subtype = response.json().get("work", {}).get("subtype", {})
+
+        elif(type == "enhancement"):
+            response = make_devrev_request(
+                "parts.get",
+                {
+                    "id": id
+                }
+            )
+
+            if response.status_code != 200:
+                error_text = response.text
+                return [
+                    types.TextContent(
+                        type="text",
+                        text=f"Get part failed with status {response.status_code}: {error_text}"
+                    )
+                ]
+
+            current_stage_id = response.json().get("part", {}).get("stage_v2", {}).get("stage", {}).get("id", {})
+            leaf_type = response.json().get("part", {}).get("type", {})
+            subtype = response.json().get("part", {}).get("subtype", {})
+        else:
+            raise ValueError("Invalid type parameter")
+        
+        if(current_stage_id == {} or leaf_type == {}):
+            raise ValueError("Could not get current stage or leaf type")
+        
+        schema_payload = {}
+        if(leaf_type != {}):
+            schema_payload["leaf_type"] = leaf_type
+        if(subtype != {}):
+            schema_payload["custom_schema_spec"] = {"subtype": subtype}
+        
+        schema_response = make_devrev_request(
+            "schemas.aggregated.get",
+            schema_payload
+        )
+
+        if schema_response.status_code != 200:
+            error_text = schema_response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"Get schema failed with status {schema_response.status_code}: {error_text}"
+                )
+            ]
+        
+        stage_diagram_id = schema_response.json().get("schema", {}).get("stage_diagram_id", {}).get("id", {})
+        if stage_diagram_id == None:
+            raise ValueError("Could not get stage diagram id")
+        
+        stage_transitions_response = make_devrev_request(
+            "stage-diagrams.get",
+            {"id": stage_diagram_id}
+        )
+
+        if stage_transitions_response.status_code != 200:
+            error_text = stage_transitions_response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"Get stage diagram for Get stage transitions failed with status {stage_transitions_response.status_code}: {error_text}"
+                )
+            ]
+
+        stages = stage_transitions_response.json().get("stage_diagram", {}).get("stages", [])
+        for stage in stages:
+            if stage.get("stage", {}).get("id") == current_stage_id:
+                transitions = stage.get("transitions", [])
+                return [
+                    types.TextContent(
+                        type="text",
+                        text=f"Valid Transitions for '{id}' from current stage:\n{transitions}"
+                    )
+                ]
+
+        return [
+            types.TextContent(
+                type="text",
+                text=f"No valid transitions found for '{id}' from current stage"
+            ),
         ]
     else:
         raise ValueError(f"Unknown tool: {name}")

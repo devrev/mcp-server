@@ -14,7 +14,7 @@ import mcp.types as types
 from mcp.server import NotificationOptions, Server
 from pydantic import AnyUrl
 import mcp.server.stdio
-from .utils import make_devrev_request, make_devrev_beta_request
+from .utils import make_devrev_request
 
 server = Server("devrev_mcp")
 
@@ -800,7 +800,7 @@ async def handle_call_tool(
         if stage:
             payload["stage_v2"] = stage
 
-        response = make_devrev_beta_request(
+        response = make_devrev_request(
             "parts.update",
             payload
         )

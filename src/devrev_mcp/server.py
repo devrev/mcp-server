@@ -85,6 +85,7 @@ async def handle_list_tools() -> list[types.Tool]:
                     "applies_to_part": {"type": "string", "description": "The DevRev ID of the part to which the work item applies"},
                     "modified_by": {"type": "array", "items": {"type": "string"}, "description": "The DevRev IDs of the users who modified the work item"},
                     "owned_by": {"type": "array", "items": {"type": "string"}, "description": "The DevRev IDs of the users who are assigned to the work item"},
+                    "stage": {"type": "string", "description": "The stage name of the work item. Use valid_stage_transition tool to get the list of valid stages you an update to."},
                 },
                 "required": ["id", "type"],
             },
@@ -551,6 +552,10 @@ async def handle_call_tool(
         applies_to_part = arguments.get("applies_to_part", [])
         if applies_to_part:
             payload["applies_to_part"] = applies_to_part
+
+        stage = arguments.get("stage")
+        if stage:
+            payload["stage"] = {"name": stage}
 
         response = make_devrev_request(
             "works.update",

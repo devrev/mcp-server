@@ -14,7 +14,7 @@ import mcp.types as types
 from mcp.server import NotificationOptions, Server
 from pydantic import AnyUrl
 import mcp.server.stdio
-from .utils import make_devrev_request
+from .utils import make_devrev_request, make_devrev_beta_request
 
 server = Server("devrev_mcp")
 
@@ -213,6 +213,7 @@ async def handle_list_tools() -> list[types.Tool]:
                     "description": {"type": "string", "description": "The description of the part"},
                     "target_close_date": {"type": "string", "description": "The target closed date of the part, for example: 2025-06-03T00:00:00Z"},
                     "target_start_date": {"type": "string", "description": "The target start date of the part, for example: 2025-06-03T00:00:00Z"},
+                    "stage": {"type": "string", "description": "The stage DevRev ID of the part. Use valid_stage_transition tool to get the list of valid stages you an update to."},
                 },
                 "required": ["id", "type"],
             },
@@ -795,7 +796,11 @@ async def handle_call_tool(
         if target_start_date:
             payload["target_start_date"] = target_start_date
 
-        response = make_devrev_request(
+        stage = arguments.get("stage")
+        if stage:
+            payload["stage_v2"] = stage
+
+        response = make_devrev_beta_request(
             "parts.update",
             payload
         )

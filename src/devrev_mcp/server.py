@@ -378,7 +378,19 @@ async def handle_list_tools() -> list[types.Tool]:
                 },
                 "required": ["type", "id"]
             }
-        )
+        ),
+        types.Tool(
+            name="add_timeline_entry",
+            description="Add a timeline entry to a work item (issue, ticket) or part (enhancement)",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string", "description": "The DevRev ID of the work item (issue, ticket) or part (enhancement)"},
+                    "timeline_entry": {"type": "string", "description": "The timeline entry about updates to the work item (issue, ticket) or part (enhancement)."},
+                },
+                "required": ["id", "timeline_entry"],
+            }
+        ),
     ]
 
 @server.call_tool()
@@ -1105,6 +1117,41 @@ async def handle_call_tool(
                 type="text",
                 text=f"No valid transitions found for '{id}' from current stage"
             ),
+        ]
+    elif name == "add_timeline_entry":
+        if not arguments:
+            raise ValueError("Missing arguments")
+
+        payload = {"type": "timeline_comment"}
+
+        id = arguments.get("id")
+        if not id:
+            raise ValueError("Missing id parameter")
+        payload["object"] = id
+
+        timeline_entry = arguments.get("timeline_entry")
+        if not timeline_entry:
+            raise ValueError("Missing timeline_entry parameter")
+        payload["body"] = timeline_entry
+        
+        timeline_response = make_devrev_request(
+            "timeline-entries.create",
+            payload
+        )
+        if timeline_response.status_code != 201:
+            error_text = timeline_response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"Create timeline entry failed with status {timeline_response.status_code}: {error_text}"
+                )
+            ]
+        
+        return [
+            types.TextContent(
+                type="text",
+                text=f"Timeline entry created successfully: {timeline_response.json()}"
+            )
         ]
     else:
         raise ValueError(f"Unknown tool: {name}")

@@ -86,6 +86,7 @@ async def handle_list_tools() -> list[types.Tool]:
                     "modified_by": {"type": "array", "items": {"type": "string"}, "description": "The DevRev IDs of the users who modified the work item"},
                     "owned_by": {"type": "array", "items": {"type": "string"}, "description": "The DevRev IDs of the users who are assigned to the work item"},
                     "stage": {"type": "string", "description": "The stage name of the work item. Use valid_stage_transition tool to get the list of valid stages you an update to."},
+                    "sprint": {"type": "string", "description": "The DevRev ID of the sprint to be assigned to an issue."},
                 },
                 "required": ["id", "type"],
             },
@@ -391,6 +392,22 @@ async def handle_list_tools() -> list[types.Tool]:
                 "required": ["id", "timeline_entry"],
             }
         ),
+        types.Tool(
+            name="get_sprints",
+            description="Get active or planned sprints for a given part ID. Use this to get the sprints for an issue based on its part.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "ancestor_part_id": {"type": "string", "description": "The ID of the part to get the sprints for."},
+                    "state": {
+                        "type": "string",
+                        "enum": ["active", "planned"],
+                        "description": "The state of the sprints to get. When the state is not provided in query, the tool will get the active sprints."
+                    },
+                },
+                "required": ["ancestor_part_id"],
+            },
+        ),
     ]
 
 @server.call_tool()
@@ -569,6 +586,10 @@ async def handle_call_tool(
         stage = arguments.get("stage")
         if stage:
             payload["stage"] = {"name": stage}
+
+        sprint = arguments.get("sprint")
+        if sprint:
+            payload["sprint"] = sprint
 
         response = make_devrev_request(
             "works.update",
@@ -1151,6 +1172,40 @@ async def handle_call_tool(
             types.TextContent(
                 type="text",
                 text=f"Timeline entry created successfully: {timeline_response.json()}"
+    elif name == "get_sprints":
+        if not arguments:
+            raise ValueError("Missing arguments")
+
+        payload = {"group_object_type": ["work"]}
+
+        ancestor_part_id = arguments.get("ancestor_part_id")
+        if not ancestor_part_id:
+            raise ValueError("Missing ancestor_part_id parameter")
+        payload["ancestor_part"] = [ancestor_part_id]
+
+        state = arguments.get("state")
+        if not state:
+            state = "active"
+        payload["state"] = [state]
+
+        response = make_devrev_request(
+            "vistas.groups.list",
+            payload
+        )
+        if response.status_code != 200:
+            error_text = response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"Get sprints failed with status {response.status_code}: {error_text}"
+                )
+            ]
+        
+        sprints = response.json().get("vista_group", [])
+        return [
+            types.TextContent(
+                type="text",
+                text=f"Sprints for '{ancestor_part_id}':\n{sprints}"
             )
         ]
     else:

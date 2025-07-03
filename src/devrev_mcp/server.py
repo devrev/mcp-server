@@ -1172,6 +1172,8 @@ async def handle_call_tool(
             types.TextContent(
                 type="text",
                 text=f"Timeline entry created successfully: {timeline_response.json()}"
+            )
+        ]
     elif name == "get_sprints":
         if not arguments:
             raise ValueError("Missing arguments")
@@ -1219,7 +1221,7 @@ async def main():
             write_stream,
             InitializationOptions(
                 server_name="devrev_mcp",
-                server_version="0.2.0",
+                server_version="0.4.1",
                 capabilities=server.get_capabilities(
                     notification_options=NotificationOptions(),
                     experimental_capabilities={},

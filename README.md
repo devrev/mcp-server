@@ -2,7 +2,7 @@
 
 ## Overview
 
-A Model Context Protocol server for DevRev. This server provides comprehensive access to DevRev's APIs, allowing you to manage work items (issues, tickets), parts (enhancements), search across your DevRev data, and retrieve user information.
+A Model Context Protocol server for DevRev. This server provides comprehensive access to DevRev's APIs, allowing you to manage work items (issues, tickets), parts (enhancements), meetings, workflow transitions, timeline entries, and sprint planning. Search across your DevRev data and retrieve user information with advanced filtering and pagination support.
 
 ## Tools
 
@@ -13,14 +13,22 @@ A Model Context Protocol server for DevRev. This server provides comprehensive a
 ### Work Items (Issues & Tickets)
 - **`get_work`**: Get comprehensive information about a specific DevRev work item using its ID.
 - **`create_work`**: Create new issues or tickets in DevRev with specified properties like title, body, assignees, and associated parts.
-- **`update_work`**: Update existing work items by modifying properties such as title, body, assignees, or associated parts.
+- **`update_work`**: Update existing work items by modifying properties such as title, body, assignees, associated parts, or stage transitions.
 - **`list_works`**: List and filter work items based on various criteria like state, dates, assignees, parts, and more.
 
 ### Parts (Enhancements)
 - **`get_part`**: Get detailed information about a specific part (enhancement) using its ID.
 - **`create_part`**: Create new parts (enhancements) with specified properties including name, description, assignees, and parent parts.
-- **`update_part`**: Update existing parts by modifying properties such as name, description, assignees, or target dates.
+- **`update_part`**: Update existing parts by modifying properties such as name, description, assignees, target dates, or stage transitions.
 - **`list_parts`**: List and filter parts based on various criteria like dates, assignees, parent parts, and more.
+
+### Meetings & Communication
+- **`list_meetings`**: List and filter meetings in DevRev based on various criteria such as channel, participants, dates, and meeting states.
+
+### Workflow Management
+- **`valid_stage_transition`**: Get a list of valid stage transitions for a given work item (issue, ticket) or part (enhancement). Use this before updating stages to ensure transitions are valid.
+- **`add_timeline_entry`**: Add timeline entries to work items (issues, tickets) or parts (enhancements) to track updates and progress.
+- **`get_sprints`**: Get active or planned sprints for a given part ID, useful for sprint planning and issue assignment.
 
 ## Prerequisites
 
@@ -137,3 +145,7 @@ On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
 - **Flexible Filtering**: Advanced filtering options for listing work items and parts based on dates, assignees, states, and more
 - **User Context**: Access to current user information for personalized experiences
 - **Rich Data Support**: Handle complex relationships between work items, parts, users, and organizations
+- **Meeting Management**: List and filter meetings across different channels and states
+- **Workflow Control**: Validate stage transitions and manage work item lifecycle
+- **Timeline Tracking**: Add timeline entries to track progress and updates on work items and parts
+- **Sprint Planning**: Access sprint information for effective project management and issue assignment

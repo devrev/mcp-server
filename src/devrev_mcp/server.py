@@ -8,6 +8,8 @@ This module implements the MCP server for DevRev integration.
 import asyncio
 import os
 import requests
+import json
+import httpx
 
 from mcp.server.models import InitializationOptions
 import mcp.types as types
@@ -30,6 +32,40 @@ async def handle_list_tools() -> list[types.Tool]:
             description="Fetch the current DevRev user details. When the user specifies 'me' in the query, this tool should be called to get the user details.",
             inputSchema={"type": "object", "properties": {}},
         ),
+         types.Tool(
+            name="get_vistas",
+            description="Retrieve all available vistas (filtered views) from DevRev",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "The DevRev ID of the vista"
+                    }
+                 },
+                 "required": ["id"]
+            },
+         ),
+         types.Tool(
+            name="list_vistas",
+            description="List all available vistas (filtered views) from DevRev with optional filtering",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "type": {"type": "array", "items": {"type": "string", "enum": ["curated", "dynamic", "grouped"]}, "description": "Filters for vistas of the specific type"},
+                    "cursor": {"type": "string", "description": "The cursor to resume iteration from. If not provided, iteration begins from the first page"},
+                    "created_by": {"type": "array", "items": {"type": "string"}, "description": "Filters for vistas created by any of these users"},
+                    "flavor": {"type": "array", "items": {"type": "string", "enum": ["nnl", "sprint_board", "support_inbox"]}, "description": "Filters for vistas of specific flavor"},
+                    "is_default": {"type": "boolean", "description": "Whether the default vistas should be fetched or not"},
+                    "limit": {"type": "integer", "description": "The maximum number of vistas to return. The default is 50, the maximum is 100"},
+                    "members": {"type": "array", "items": {"type": "string"}, "description": "Filters for vistas accessible to the input members"},
+                    "mode": {"type": "string", "enum": ["after", "before"], "description": "The iteration mode to use. If 'after', then entries after the provided cursor will be returned. If 'before', then entries before the provided cursor will be returned"},
+                    "sort_by": {"type": "array", "items": {"type": "string", "enum": ["target_start_date:asc", "target_start_date:desc", "target_close_date:asc", "target_close_date:desc", "actual_start_date:asc", "actual_start_date:desc", "actual_close_date:asc", "actual_close_date:desc", "created_date:asc", "created_date:desc"]}, "description": "The field (and the order) to sort the works by, in the sequence of the array elements"},
+                    "state": {"type": "array", "items": {"type": "string", "enum": ["active", "completed", "planned"]}, "description": "Denotes the state of the vista group item"},
+                    "skip_items": {"type": "boolean", "description": "Denotes whether to skip items of vista_group_item in response"}
+                }
+            },
+         ),
         types.Tool(
             name="search",
             description="Search DevRev using the provided query",
@@ -39,7 +75,7 @@ async def handle_list_tools() -> list[types.Tool]:
                     "query": {"type": "string"},
                     "namespace": {
                         "type": "string", 
-                        "enum": ["article", "issue", "ticket", "part", "dev_user", "account", "rev_org"],
+                        "enum": ["article", "issue", "ticket", "part", "dev_user", "account", "rev_org", "vista"],
                         "description": "The namespace to search in. Use this to specify the type of object to search for."
                     },
                 },
@@ -439,6 +475,107 @@ async def handle_call_tool(
                 text=f"Current DevRev user details: {response.json()}"
             )
         ]
+    
+    elif name == "get_vistas":
+        if not arguments:
+            raise ValueError("Missing arguments")
+
+        id = arguments.get("id")
+        if not id:
+            raise ValueError("Missing id ")
+            
+        response = make_devrev_request(
+            "vistas.get",
+            {
+                "id": id
+            }
+        )
+        
+        if response.status_code != 200:
+            error_text = response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"get_vistas failed with status {response.status_code}: {error_text}"
+                )
+            ]
+        
+        return [
+            types.TextContent(
+                type="text",
+                text=f"Vista details for '{id}':\n{response.json()}"
+            )
+        ]
+    
+    elif name == "list_vistas":
+        payload = {}
+        
+        if arguments:
+            type_filter = arguments.get("type")
+            if type_filter:
+                payload["type"] = type_filter
+            
+            cursor = arguments.get("cursor")
+            if cursor:
+                payload["cursor"] = cursor
+            
+            created_by = arguments.get("created_by")
+            if created_by:
+                payload["created_by"] = created_by
+            
+            flavor = arguments.get("flavor")
+            if flavor:
+                payload["flavor"] = flavor
+            
+            is_default = arguments.get("is_default")
+            if is_default is not None:
+                payload["is_default"] = is_default
+            
+            limit = arguments.get("limit")
+            if limit:
+                payload["limit"] = limit
+            
+            members = arguments.get("members")
+            if members:
+                payload["members"] = members
+            
+            mode = arguments.get("mode")
+            if mode:
+                payload["mode"] = mode
+            
+            sort_by = arguments.get("sort_by")
+            if sort_by:
+                payload["sort_by"] = sort_by
+            
+            state = arguments.get("state")
+            if state:
+                payload["state"] = state
+            
+            skip_items = arguments.get("skip_items")
+            if skip_items is not None:
+                payload["skip_items"] = skip_items
+        
+        response = make_devrev_request(
+            "vistas.list",
+            payload
+        )
+        
+        if response.status_code != 200:
+            error_text = response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"list_vistas failed with status {response.status_code}: {error_text}"
+                )
+            ]
+        
+        return [
+            types.TextContent(
+                type="text",
+                text=f"Vistas listed successfully:\n{response.json()}"
+            )
+        ]
+
     elif name == "search":
         if not arguments:
             raise ValueError("Missing arguments")
@@ -547,6 +684,7 @@ async def handle_call_tool(
                 text=f"Object created successfully: {response.json()}"
             )
         ]
+    
     elif name == "update_work":
         if not arguments:
             raise ValueError("Missing arguments")

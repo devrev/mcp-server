@@ -596,8 +596,6 @@ async def handle_call_tool(
                 text=f"Object created successfully: {response.json()}"
             )
         ]
-    # elif name == "get_vistas":
-    # return await _get_vistas(arguments)
     
     elif name == "update_work":
         if not arguments:

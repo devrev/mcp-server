@@ -8,6 +8,8 @@ This module implements the MCP server for DevRev integration.
 import asyncio
 import os
 import requests
+import json
+import httpx
 
 from mcp.server.models import InitializationOptions
 import mcp.types as types
@@ -30,6 +32,20 @@ async def handle_list_tools() -> list[types.Tool]:
             description="Fetch the current DevRev user details. When the user specifies 'me' in the query, this tool should be called to get the user details.",
             inputSchema={"type": "object", "properties": {}},
         ),
+         types.Tool(
+            name="get_vistas",
+            description="Retrieve all available vistas (filtered views) from DevRev",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "The DevRev ID of the vista"
+                    }
+                 },
+                 "required": ["id"]
+            },
+         ),
         types.Tool(
             name="search",
             description="Search DevRev using the provided query",
@@ -39,7 +55,7 @@ async def handle_list_tools() -> list[types.Tool]:
                     "query": {"type": "string"},
                     "namespace": {
                         "type": "string", 
-                        "enum": ["article", "issue", "ticket", "part", "dev_user", "account", "rev_org"],
+                        "enum": ["article", "issue", "ticket", "part", "dev_user", "account", "rev_org", "vista"],
                         "description": "The namespace to search in. Use this to specify the type of object to search for."
                     },
                 },
@@ -439,6 +455,39 @@ async def handle_call_tool(
                 text=f"Current DevRev user details: {response.json()}"
             )
         ]
+    
+    elif name == "get_vistas":
+        if not arguments:
+            raise ValueError("Missing arguments")
+
+        id = arguments.get("id")
+        if not id:
+            raise ValueError("Missing id ")
+            
+        response = make_devrev_request(
+            "vistas.get",
+            {
+                "id": id
+            }
+        )
+        
+        if response.status_code != 200:
+            error_text = response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"get_vistas failed with status {response.status_code}: {error_text}"
+                )
+            ]
+        
+        return [
+            types.TextContent(
+                type="text",
+                text=f"Vista details for '{id}':\n{response.json()}"
+            )
+        ]
+    
+
     elif name == "search":
         if not arguments:
             raise ValueError("Missing arguments")
@@ -547,6 +596,9 @@ async def handle_call_tool(
                 text=f"Object created successfully: {response.json()}"
             )
         ]
+    # elif name == "get_vistas":
+    # return await _get_vistas(arguments)
+    
     elif name == "update_work":
         if not arguments:
             raise ValueError("Missing arguments")

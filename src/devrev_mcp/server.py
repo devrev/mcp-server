@@ -408,6 +408,65 @@ async def handle_list_tools() -> list[types.Tool]:
                 "required": ["ancestor_part_id"],
             },
         ),
+        types.Tool(
+            name="get_opportunity",
+            description="Get information about an opportunity using its ID",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string", "description": "The DevRev ID of the opportunity"},
+                },
+                "required": ["id"],
+            },
+        ),
+        types.Tool(
+            name="list_opportunities",
+            description="List opportunities with filtering",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "cursor": {
+                        "type": "object",
+                        "properties": {
+                            "next_cursor": {"type": "string", "description": "The cursor to use for pagination. If not provided, iteration begins from the first page."},
+                            "mode": {"type": "string", "enum": ["after", "before"], "description": "The mode to iterate after the cursor or before the cursor ."},
+                        },
+                        "required": ["next_cursor", "mode"],
+                        "description": "The cursor to use for pagination. If not provided, iteration begins from the first page. In the output you get next_cursor, use it and the correct mode to get the next or previous page. You can use these to loop through all the pages."
+                    },
+                    "owned_by": {"type": "array", "items": {"type": "string"}, "description": "The DevRev IDs of the users who own the opportunities "},
+                    "account": {"type": "array", "items": {"type": "string"}, "description": "The account IDs associated with the opportunities "},
+                    "modified_by": {"type": "array", "items": {"type": "string"}, "description": "The DevRev IDs of the users who modified the opportunities"},
+                    "stage": {"type": "array", "items": {"type": "string"}, "description": "The stage names of the opportunities"},
+                    "state": {"type": "array", "items": {"type": "string", "enum": ["open", "closed", "in_progress"]}, "description": "The state names of the opportunities "},
+                    "sort_by": {"type": "array", "items": {"type": "string", "enum": ["created_date:asc", "created_date:desc", "modified_date:asc", "modified_date:desc", "target_close_date:asc", "target_close_date:desc"]}, "description": "The field (and the order) to sort the opportunities by, in the sequence of the array elements"},
+                    "created_date": {
+                        "type": "object",
+                        "properties": {
+                            "after": {"type": "string", "description": "The start date of the created date range, for example: 2025-06-03T00:00:00Z"},
+                            "before": {"type": "string", "description": "The end date of the created date range, for example: 2025-06-03T00:00:00Z"},
+                        }, 
+                        "required": ["after", "before"]
+                    },
+                    "modified_date": {
+                        "type": "object",
+                        "properties": {
+                            "after": {"type": "string", "description": "The start date of the modified date range, for example: 2025-06-03T00:00:00Z"},
+                            "before": {"type": "string", "description": "The end date of the modified date range, for example: 2025-06-03T00:00:00Z"},
+                        }, 
+                        "required": ["after", "before"]
+                    },
+                    "target_close_date": {
+                        "type": "object",
+                        "properties": {
+                            "after": {"type": "string", "description": "The start date of the target close date range, for example: 2025-06-03T00:00:00Z"},
+                            "before": {"type": "string", "description": "The end date of the target close date range, for example: 2025-06-03T00:00:00Z"},
+                        }, 
+                        "required": ["after", "before"]
+                    },
+                },
+            },
+        ),
     ]
 
 @server.call_tool()
@@ -1208,6 +1267,102 @@ async def handle_call_tool(
             types.TextContent(
                 type="text",
                 text=f"Sprints for '{ancestor_part_id}':\n{sprints}"
+            )
+        ]
+    elif name == "get_opportunity":
+        if not arguments:
+            raise ValueError("Missing arguments")
+
+        id = arguments.get("id")
+        if not id:
+            raise ValueError("Missing id parameter")
+        
+        response = make_devrev_request(
+            "opportunities.get",
+            {
+                "id": id
+            }
+        )
+        if response.status_code != 200:
+            error_text = response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"Get opportunity failed with status {response.status_code}: {error_text}"
+                )
+            ]
+        
+        return [
+            types.TextContent(
+                type="text",
+                text=f"Opportunity information for '{id}':\n{response.json()}"
+            )
+        ]
+    elif name == "list_opportunities":
+        payload = {}
+        
+        if arguments:
+            cursor = arguments.get("cursor")
+            if cursor:
+                payload["cursor"] = cursor["next_cursor"]
+                payload["mode"] = cursor["mode"]
+
+            owned_by = arguments.get("owned_by")
+            if owned_by:
+                payload["owned_by"] = owned_by
+
+            account = arguments.get("account")
+            if account:
+                payload["account"] = account
+
+
+
+            modified_by = arguments.get("modified_by")
+            if modified_by:
+                payload["modified_by"] = modified_by
+
+            stage = arguments.get("stage")
+            if stage:
+                payload["stage"] = stage
+
+            state = arguments.get("state")
+            if state:
+                payload["state"] = state
+
+            sort_by = arguments.get("sort_by")
+            if sort_by:
+                payload["sort_by"] = sort_by
+
+            created_date = arguments.get("created_date")
+            if created_date:
+                payload["created_date"] = {"type": "range", "after": created_date["after"], "before": created_date["before"]}
+
+            modified_date = arguments.get("modified_date")
+            if modified_date:
+                payload["modified_date"] = {"type": "range", "after": modified_date["after"], "before": modified_date["before"]}
+
+            target_close_date = arguments.get("target_close_date")
+            if target_close_date:
+                payload["target_close_date"] = {"type": "range", "after": target_close_date["after"], "before": target_close_date["before"]}
+
+        response = make_devrev_request(
+            "opportunities.list",
+            payload
+        )
+
+        if response.status_code != 200:
+            error_text = response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"List opportunities failed with status {response.status_code}: {error_text}"
+                )
+            ]
+        
+        return [
+            types.TextContent(
+                type="text",
+                text=f"Opportunities listed successfully:\n{response.json()}"
             )
         ]
     else:

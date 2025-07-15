@@ -85,6 +85,8 @@ async def handle_list_tools() -> list[types.Tool]:
                     "applies_to_part": {"type": "string", "description": "The DevRev ID of the part to which the work item applies"},
                     "modified_by": {"type": "array", "items": {"type": "string"}, "description": "The DevRev IDs of the users who modified the work item"},
                     "owned_by": {"type": "array", "items": {"type": "string"}, "description": "The DevRev IDs of the users who are assigned to the work item"},
+                    "stage": {"type": "string", "description": "The stage name of the work item. Use valid_stage_transition tool to get the list of valid stages you an update to."},
+                    "sprint": {"type": "string", "description": "The DevRev ID of the sprint to be assigned to an issue."},
                 },
                 "required": ["id", "type"],
             },
@@ -212,6 +214,7 @@ async def handle_list_tools() -> list[types.Tool]:
                     "description": {"type": "string", "description": "The description of the part"},
                     "target_close_date": {"type": "string", "description": "The target closed date of the part, for example: 2025-06-03T00:00:00Z"},
                     "target_start_date": {"type": "string", "description": "The target start date of the part, for example: 2025-06-03T00:00:00Z"},
+                    "stage": {"type": "string", "description": "The stage DevRev ID of the part. Use valid_stage_transition tool to get the list of valid stages you an update to."},
                 },
                 "required": ["id", "type"],
             },
@@ -272,6 +275,137 @@ async def handle_list_tools() -> list[types.Tool]:
                     },
                 },
                 "required": ["type"],
+            },
+        ),
+        types.Tool(
+            name="list_meetings",
+            description="List meetings in DevRev",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "channel": {
+                        "type": "array",
+                        "items": {"type": "string", "enum": ["amazon_connect", "google_meet", "offline", "other", "teams", "zoom"]},
+                        "description": "Filters for meeting on specified channels"
+                    },
+                    "created_by": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Filters for meetings created by the specified user DevRev IDs"
+                    },
+                    "created_date": {
+                        "type": "object",
+                        "properties": {
+                            "after": {"type": "string", "description": "The start date of the created date range, for example: 2025-06-03T00:00:00Z"},
+                            "before": {"type": "string", "description": "The end date of the created date range, for example: 2025-06-03T00:00:00Z"}
+                        },
+                        "required": ["after", "before"]
+                    },
+                    "cursor": {
+                        "type": "object",
+                        "properties": {
+                            "next_cursor": {"type": "string", "description": "The cursor to use for pagination. If not provided, iteration begins from the first page."},
+                            "mode": {"type": "string", "enum": ["after", "before"], "description": "The mode to iterate after the cursor or before the cursor"}
+                        },
+                        "required": ["next_cursor", "mode"]
+                    },
+                    "ended_date": {
+                        "type": "object",
+                        "properties": {
+                            "after": {"type": "string", "description": "The start date of the ended date range, for example: 2025-06-03T00:00:00Z"},
+                            "before": {"type": "string", "description": "The end date of the ended date range, for example: 2025-06-03T00:00:00Z"}
+                        },
+                        "required": ["after", "before"]
+                    },
+                    "external_ref": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Filters for meetings with the provided external_ref(s)"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "The maximum number of meetings to return"
+                    },
+                    "members": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Filter for meeting on specified Member Ids"
+                    },
+                    "modified_date": {
+                        "type": "object",
+                        "properties": {
+                            "after": {"type": "string", "description": "The start date of the modified date range, for example: 2025-06-03T00:00:00Z"},
+                            "before": {"type": "string", "description": "The end date of the modified date range, for example: 2025-06-03T00:00:00Z"}
+                        },
+                        "required": ["after", "before"]
+                    },
+                    "organizer": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Filter for meeting on specified organizers"
+                    },
+                    "scheduled_date": {
+                        "type": "object",
+                        "properties": {
+                            "after": {"type": "string", "description": "The start date of the scheduled date range, for example: 2025-06-03T00:00:00Z"},
+                            "before": {"type": "string", "description": "The end date of the scheduled date range, for example: 2025-06-03T00:00:00Z"}
+                        },
+                        "required": ["after", "before"]
+                    },
+                    "sort_by": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": ["target_start_date:asc", "target_start_date:desc", "target_close_date:asc", "target_close_date:desc", "actual_start_date:asc", "actual_start_date:desc", "actual_close_date:asc", "actual_close_date:desc", "created_date:asc", "created_date:desc", "modified_date:asc", "modified_date:desc"]
+                        },
+                        "description": "The field (and the order) to sort the meetings by, in the sequence of the array elements"
+                    },
+                    "state": {
+                        "type": "array",
+                        "items": {"type": "string", "enum": ["cancelled", "completed", "no_show", "ongoing", "rejected", "scheduled", "rescheduled", "waiting"]},
+                        "description": "Filters for meeting on specified state or outcomes"
+                    }
+                }
+            }
+        ),
+        types.Tool(
+            name="valid_stage_transition",
+            description="gets a list of valid stage transition for a given work item (issue, ticket) or part (enhancement). Use this before updating stage of the work item or part to ensure the transition is valid.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "type": {"type": "string", "enum": ["issue", "ticket", "enhancement"]},
+                    "id": {"type": "string", "description": "The DevRev ID of the work item (issue, ticket) or part (enhancement)"},
+                },
+                "required": ["type", "id"]
+            }
+        ),
+        types.Tool(
+            name="add_timeline_entry",
+            description="Add a timeline entry to a work item (issue, ticket) or part (enhancement)",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string", "description": "The DevRev ID of the work item (issue, ticket) or part (enhancement)"},
+                    "timeline_entry": {"type": "string", "description": "The timeline entry about updates to the work item (issue, ticket) or part (enhancement)."},
+                },
+                "required": ["id", "timeline_entry"],
+            }
+        ),
+        types.Tool(
+            name="get_sprints",
+            description="Get active or planned sprints for a given part ID. Use this to get the sprints for an issue based on its part.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "ancestor_part_id": {"type": "string", "description": "The ID of the part to get the sprints for."},
+                    "state": {
+                        "type": "string",
+                        "enum": ["active", "planned"],
+                        "description": "The state of the sprints to get. When the state is not provided in query, the tool will get the active sprints."
+                    },
+                },
+                "required": ["ancestor_part_id"],
             },
         ),
     ]
@@ -448,6 +582,14 @@ async def handle_call_tool(
         applies_to_part = arguments.get("applies_to_part", [])
         if applies_to_part:
             payload["applies_to_part"] = applies_to_part
+
+        stage = arguments.get("stage")
+        if stage:
+            payload["stage"] = {"name": stage}
+
+        sprint = arguments.get("sprint")
+        if sprint:
+            payload["sprint"] = sprint
 
         response = make_devrev_request(
             "works.update",
@@ -687,6 +829,10 @@ async def handle_call_tool(
         if target_start_date:
             payload["target_start_date"] = target_start_date
 
+        stage = arguments.get("stage")
+        if stage:
+            payload["stage_v2"] = stage
+
         response = make_devrev_request(
             "parts.update",
             payload
@@ -792,6 +938,278 @@ async def handle_call_tool(
                 text=f"Parts listed successfully: {response.json()}"
             )
         ]
+    elif name == "list_meetings":
+        if not arguments:
+            arguments = {}
+
+        payload = {}
+        
+        channel = arguments.get("channel")
+        if channel:
+            payload["channel"] = channel
+
+        created_by = arguments.get("created_by")
+        if created_by:
+            payload["created_by"] = created_by
+
+        created_date = arguments.get("created_date")
+        if created_date:
+            payload["created_date"] = {"type": "range", "after": created_date["after"], "before": created_date["before"]}
+
+        cursor = arguments.get("cursor")
+        if cursor:
+            payload["cursor"] = cursor["next_cursor"]
+            payload["mode"] = cursor["mode"]
+
+        ended_date = arguments.get("ended_date")
+        if ended_date:
+            payload["ended_date"] = {"type": "range", "after": ended_date["after"], "before": ended_date["before"]}
+
+        external_ref = arguments.get("external_ref")
+        if external_ref:
+            payload["external_ref"] = external_ref
+
+        limit = arguments.get("limit")
+        if limit:
+            payload["limit"] = limit
+
+        members = arguments.get("members")
+        if members:
+            payload["members"] = members
+
+        modified_date = arguments.get("modified_date")
+        if modified_date:
+            payload["modified_date"] = {"type": "range", "after": modified_date["after"], "before": modified_date["before"]}
+
+        organizer = arguments.get("organizer")
+        if organizer:
+            payload["organizer"] = organizer
+
+        scheduled_date = arguments.get("scheduled_date")
+        if scheduled_date:
+            payload["scheduled_date"] = {"type": "range", "after": scheduled_date["after"], "before": scheduled_date["before"]}
+
+        sort_by = arguments.get("sort_by")
+        if sort_by:
+            payload["sort_by"] = sort_by
+
+        state = arguments.get("state")
+        if state:
+            payload["state"] = state
+
+        response = make_devrev_request(
+            "meetings.list",
+            payload
+        )
+
+        if response.status_code != 200:
+            error_text = response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"List meetings failed with status {response.status_code}: {error_text}"
+                )
+            ]
+
+        return [
+            types.TextContent(
+                type="text",
+                text=f"Meetings listed successfully: {response.json()}"
+            )
+        ]
+    elif name == "valid_stage_transition":
+        if not arguments:
+            raise ValueError("Missing arguments")
+
+        payload = {}
+
+        id = arguments.get("id")
+        if not id:
+            raise ValueError("Missing id parameter")
+        payload["id"] = id
+
+        type = arguments.get("type")
+        if not type:
+            raise ValueError("Missing type parameter")
+        payload["type"] = type
+
+        current_stage_id = None
+        leaf_type = None
+        subtype = None
+
+        if(type == "issue" or type == "ticket"):
+            response = make_devrev_request(
+                "works.get",
+                {
+                    "id": id
+                }
+            )
+
+            if response.status_code != 200:
+                error_text = response.text
+                return [
+                    types.TextContent(
+                        type="text",
+                        text=f"Get work item failed with status {response.status_code}: {error_text}"
+                    )
+                ]
+            
+            current_stage_id = response.json().get("work", {}).get("stage", {}).get("stage", {}).get("id", {})
+            leaf_type = response.json().get("work", {}).get("type", {})
+            subtype = response.json().get("work", {}).get("subtype", {})
+
+        elif(type == "enhancement"):
+            response = make_devrev_request(
+                "parts.get",
+                {
+                    "id": id
+                }
+            )
+
+            if response.status_code != 200:
+                error_text = response.text
+                return [
+                    types.TextContent(
+                        type="text",
+                        text=f"Get part failed with status {response.status_code}: {error_text}"
+                    )
+                ]
+
+            current_stage_id = response.json().get("part", {}).get("stage_v2", {}).get("stage", {}).get("id", {})
+            leaf_type = response.json().get("part", {}).get("type", {})
+            subtype = response.json().get("part", {}).get("subtype", {})
+        else:
+            raise ValueError("Invalid type parameter")
+        
+        if(current_stage_id == {} or leaf_type == {}):
+            raise ValueError("Could not get current stage or leaf type")
+        
+        schema_payload = {}
+        if(leaf_type != {}):
+            schema_payload["leaf_type"] = leaf_type
+        if(subtype != {}):
+            schema_payload["custom_schema_spec"] = {"subtype": subtype}
+        
+        schema_response = make_devrev_request(
+            "schemas.aggregated.get",
+            schema_payload
+        )
+
+        if schema_response.status_code != 200:
+            error_text = schema_response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"Get schema failed with status {schema_response.status_code}: {error_text}"
+                )
+            ]
+        
+        stage_diagram_id = schema_response.json().get("schema", {}).get("stage_diagram_id", {}).get("id", {})
+        if stage_diagram_id == None:
+            raise ValueError("Could not get stage diagram id")
+        
+        stage_transitions_response = make_devrev_request(
+            "stage-diagrams.get",
+            {"id": stage_diagram_id}
+        )
+
+        if stage_transitions_response.status_code != 200:
+            error_text = stage_transitions_response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"Get stage diagram for Get stage transitions failed with status {stage_transitions_response.status_code}: {error_text}"
+                )
+            ]
+
+        stages = stage_transitions_response.json().get("stage_diagram", {}).get("stages", [])
+        for stage in stages:
+            if stage.get("stage", {}).get("id") == current_stage_id:
+                transitions = stage.get("transitions", [])
+                return [
+                    types.TextContent(
+                        type="text",
+                        text=f"Valid Transitions for '{id}' from current stage:\n{transitions}"
+                    )
+                ]
+
+        return [
+            types.TextContent(
+                type="text",
+                text=f"No valid transitions found for '{id}' from current stage"
+            ),
+        ]
+    elif name == "add_timeline_entry":
+        if not arguments:
+            raise ValueError("Missing arguments")
+
+        payload = {"type": "timeline_comment"}
+
+        id = arguments.get("id")
+        if not id:
+            raise ValueError("Missing id parameter")
+        payload["object"] = id
+
+        timeline_entry = arguments.get("timeline_entry")
+        if not timeline_entry:
+            raise ValueError("Missing timeline_entry parameter")
+        payload["body"] = timeline_entry
+        
+        timeline_response = make_devrev_request(
+            "timeline-entries.create",
+            payload
+        )
+        if timeline_response.status_code != 201:
+            error_text = timeline_response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"Create timeline entry failed with status {timeline_response.status_code}: {error_text}"
+                )
+            ]
+        
+        return [
+            types.TextContent(
+                type="text",
+                text=f"Timeline entry created successfully: {timeline_response.json()}"
+            )
+        ]
+    elif name == "get_sprints":
+        if not arguments:
+            raise ValueError("Missing arguments")
+
+        payload = {"group_object_type": ["work"]}
+
+        ancestor_part_id = arguments.get("ancestor_part_id")
+        if not ancestor_part_id:
+            raise ValueError("Missing ancestor_part_id parameter")
+        payload["ancestor_part"] = [ancestor_part_id]
+
+        state = arguments.get("state")
+        if not state:
+            state = "active"
+        payload["state"] = [state]
+
+        response = make_devrev_request(
+            "vistas.groups.list",
+            payload
+        )
+        if response.status_code != 200:
+            error_text = response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"Get sprints failed with status {response.status_code}: {error_text}"
+                )
+            ]
+        
+        sprints = response.json().get("vista_group", [])
+        return [
+            types.TextContent(
+                type="text",
+                text=f"Sprints for '{ancestor_part_id}':\n{sprints}"
+            )
+        ]
     else:
         raise ValueError(f"Unknown tool: {name}")
 
@@ -803,7 +1221,7 @@ async def main():
             write_stream,
             InitializationOptions(
                 server_name="devrev_mcp",
-                server_version="0.2.0",
+                server_version="0.4.1",
                 capabilities=server.get_capabilities(
                     notification_options=NotificationOptions(),
                     experimental_capabilities={},

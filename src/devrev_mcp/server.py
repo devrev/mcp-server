@@ -8,7 +8,6 @@ This module implements the MCP server for DevRev integration.
 import asyncio
 import os
 import requests
-import json
 import httpx
 
 from mcp.server.models import InitializationOptions
@@ -33,8 +32,8 @@ async def handle_list_tools() -> list[types.Tool]:
             inputSchema={"type": "object", "properties": {}},
         ),
          types.Tool(
-            name="get_vistas",
-            description="Retrieve all available vistas (filtered views) from DevRev",
+            name="get_vista",
+            description="Retrieve information about a vista in DevRev using its ID",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -456,7 +455,7 @@ async def handle_call_tool(
             )
         ]
     
-    elif name == "get_vistas":
+    elif name == "get_vista":
         if not arguments:
             raise ValueError("Missing arguments")
 
@@ -476,7 +475,7 @@ async def handle_call_tool(
             return [
                 types.TextContent(
                     type="text",
-                    text=f"get_vistas failed with status {response.status_code}: {error_text}"
+                    text=f"get_vista failed with status {response.status_code}: {error_text}"
                 )
             ]
         

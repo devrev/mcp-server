@@ -8,7 +8,6 @@ This module implements the MCP server for DevRev integration.
 import asyncio
 import os
 import requests
-import httpx
 
 from mcp.server.models import InitializationOptions
 import mcp.types as types

@@ -1,0 +1,10 @@
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+dist/
+.env
+.DS_Store
+**/.DS_Store
+.cursor/

@@ -422,6 +422,43 @@ async def handle_list_tools() -> list[types.Tool]:
                 "required": ["ancestor_part_id"],
             },
         ),
+        types.Tool(
+            name="create_opportunity",
+            description="Create a new opportunity in DevRev",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string", "description": "The title of the opportunity"},
+                    "description": {"type": "string", "description": "The description of the opportunity"},
+                    "account": {"type": "string", "description": "The DevRev ID of the account associated with the opportunity"},
+                    "owned_by": {"type": "array", "items": {"type": "string"}, "description": "The DevRev IDs of the users who own the opportunity"},
+                    "stage": {"type": "string", "description": "The stage of the opportunity"},
+                    "total_value": {"type": "number", "description": "The total value of the opportunity"},
+                    "forecast_category": {"type": "string", "enum": ["pipeline", "omitted", "upside", "strong_upside", "commit", "won"], "description": "The forecast category of the opportunity"},
+                    "target_close_date": {"type": "string", "description": "The target close date of the opportunity, for example: 2025-06-03T00:00:00Z"},
+                },
+                "required": ["title", "account", "owned_by"],
+            },
+        ),
+        types.Tool(
+            name="update_opportunity",
+            description="Update an existing opportunity in DevRev",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string", "description": "The DevRev ID of the opportunity to update"},
+                    "title": {"type": "string", "description": "The title of the opportunity"},
+                    "description": {"type": "string", "description": "The description of the opportunity"},
+                    "account": {"type": "string", "description": "The DevRev ID of the account associated with the opportunity"},
+                    "owned_by": {"type": "array", "items": {"type": "string"}, "description": "The DevRev IDs of the users who own the opportunity"},
+                    "stage": {"type": "string", "description": "The stage of the opportunity"},
+                    "total_value": {"type": "number", "description": "The total value of the opportunity"},
+                    "forecast_category": {"type": "string", "enum": ["pipeline", "omitted", "upside", "strong_upside", "commit", "won"], "description": "The forecast category of the opportunity"},
+                    "target_close_date": {"type": "string", "description": "The target close date of the opportunity, for example: 2025-06-03T00:00:00Z"},
+                },
+                "required": ["id"],
+            },
+        ),
     ]
 
 @server.call_tool()
@@ -1256,6 +1293,129 @@ async def handle_call_tool(
             types.TextContent(
                 type="text",
                 text=f"Sprints for '{ancestor_part_id}':\n{sprints}"
+            )
+        ]
+    elif name == "create_opportunity":
+        if not arguments:
+            raise ValueError("Missing arguments")
+
+        payload = {}
+
+        title = arguments.get("title")
+        if not title:
+            raise ValueError("Missing title parameter")
+        payload["title"] = title
+
+        account = arguments.get("account")
+        if not account:
+            raise ValueError("Missing account parameter")
+        payload["account"] = account
+
+        owned_by = arguments.get("owned_by")
+        if not owned_by:
+            raise ValueError("Missing owned_by parameter")
+        payload["owned_by"] = owned_by
+
+        description = arguments.get("description")
+        if description:
+            payload["description"] = description
+
+        stage = arguments.get("stage")
+        if stage:
+            payload["stage"] = stage
+
+        total_value = arguments.get("total_value")
+        if total_value:
+            payload["total_value"] = total_value
+
+        forecast_category = arguments.get("forecast_category")
+        if forecast_category:
+            payload["forecast_category"] = forecast_category
+
+        target_close_date = arguments.get("target_close_date")
+        if target_close_date:
+            payload["target_close_date"] = target_close_date
+
+        response = make_devrev_request(
+            "opportunities.create",
+            payload
+        )
+        if response.status_code != 201:
+            error_text = response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"Create opportunity failed with status {response.status_code}: {error_text}"
+                )
+            ]
+
+        return [
+            types.TextContent(
+                type="text",
+                text=f"Opportunity created successfully: {response.json()}"
+            )
+        ]
+    elif name == "update_opportunity":
+        if not arguments:
+            raise ValueError("Missing arguments")
+        
+        payload = {}
+
+        id = arguments.get("id")
+        if not id:
+            raise ValueError("Missing id parameter")
+        payload["id"] = id
+
+        title = arguments.get("title")
+        if title:
+            payload["title"] = title
+
+        description = arguments.get("description")
+        if description:
+            payload["description"] = description
+
+        account = arguments.get("account")
+        if account:
+            payload["account"] = account
+
+        owned_by = arguments.get("owned_by")
+        if owned_by:
+            payload["owned_by"] = owned_by
+
+        stage = arguments.get("stage")
+        if stage:
+            payload["stage"] = stage
+
+        total_value = arguments.get("total_value")
+        if total_value:
+            payload["total_value"] = total_value
+
+        forecast_category = arguments.get("forecast_category")
+        if forecast_category:
+            payload["forecast_category"] = forecast_category
+
+        target_close_date = arguments.get("target_close_date")
+        if target_close_date:
+            payload["target_close_date"] = target_close_date
+
+        response = make_devrev_request(
+            "opportunities.update",
+            payload
+        )
+
+        if response.status_code != 200:
+            error_text = response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"Update opportunity failed with status {response.status_code}: {error_text}"
+                )
+            ]
+        
+        return [
+            types.TextContent(
+                type="text",
+                text=f"Opportunity updated successfully: {response.json()}"
             )
         ]
     else:

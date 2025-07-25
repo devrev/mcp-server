@@ -14,7 +14,7 @@ import mcp.types as types
 from mcp.server import NotificationOptions, Server
 from pydantic import AnyUrl
 import mcp.server.stdio
-from .utils import make_devrev_request
+from .utils import make_devrev_request, make_internal_devrev_request
 
 server = Server("devrev_mcp")
 
@@ -30,9 +30,9 @@ async def handle_list_tools() -> list[types.Tool]:
             description="Fetch the current DevRev user details. When the user specifies 'me' in the query, this tool should be called to get the user details.",
             inputSchema={"type": "object", "properties": {}},
         ),
-         types.Tool(
+        types.Tool(
             name="get_vista",
-            description="Retrieve information about a vista in DevRev using its ID",
+            description="Retrieve information about a vista in DevRev using its ID. In DevRev a vista is a sprint board which contains sprints (or vista group items). The reponse of this tool will contain the sprint (or vista group item) IDs that you can use to filter on sprints.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -43,7 +43,7 @@ async def handle_list_tools() -> list[types.Tool]:
                  },
                  "required": ["id"]
             },
-         ),
+        ),
         types.Tool(
             name="search",
             description="Search DevRev using the provided query",
@@ -187,6 +187,14 @@ async def handle_list_tools() -> list[types.Tool]:
                         }, 
                         "required": ["after", "before"]
                     },
+                    "sprint": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "description": "The DevRev ID of the sprint to filter on. In DevRev a sprint is a vista group item. You will get these IDs from the response of get vista tool."
+                        },
+                        "description": "Use this to filter on sprints."
+                    }
                 },
                 "required": ["type"],
             },
@@ -462,7 +470,7 @@ async def handle_call_tool(
         if not id:
             raise ValueError("Missing id ")
             
-        response = make_devrev_request(
+        response = make_internal_devrev_request(
             "vistas.get",
             {
                 "id": id
@@ -735,6 +743,10 @@ async def handle_call_tool(
         modified_date = arguments.get("modified_date")
         if modified_date:
             payload["modified_date"] = {"type": "range", "after": modified_date["after"], "before": modified_date["before"]}
+
+        sprint = arguments.get("sprint")
+        if sprint:
+            payload["issue"]["sprint"] = sprint
 
         if payload["issue"] == {}:
             payload.pop("issue")

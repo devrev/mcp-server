@@ -53,7 +53,7 @@ async def handle_list_tools() -> list[types.Tool]:
                     "query": {"type": "string"},
                     "namespace": {
                         "type": "string", 
-                        "enum": ["article", "issue", "ticket", "part", "dev_user", "account", "rev_org", "vista"],
+                        "enum": ["article", "issue", "ticket", "part", "dev_user", "account", "rev_org", "vista", "incident"],
                         "description": "The namespace to search in. Use this to specify the type of object to search for."
                     },
                 },
@@ -194,6 +194,26 @@ async def handle_list_tools() -> list[types.Tool]:
                             "description": "The DevRev ID of the sprint to filter on. In DevRev a sprint is a vista group item. You will get these IDs from the response of get vista tool."
                         },
                         "description": "Use this to filter on sprints."
+                    },
+                    "custom_fields": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {"type": "string", "description": "The name of the custom field. All the characters in the name should be lowercase and words separated by underscores. For example: 'custom_field_name'"},
+                                "value": {"type": "array", "items": {"type": "string"}, "description": "The value of the custom field"}
+                            },
+                            "required": ["name", "value"]
+                        },
+                        "description": "Use this to filter on the custom fields, which are not present in the input schema."
+                    },
+                    "subtype": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "description": "The DevRev value of the subtype to filter on. Remember to always use the list_subtypes tool to check the correct DevRev values of subtypes."
+                        },
+                        "description": "Use this to filter on the subtype of the work items."
                     }
                 },
                 "required": ["type"],
@@ -430,6 +450,17 @@ async def handle_list_tools() -> list[types.Tool]:
                 "required": ["ancestor_part_id"],
             },
         ),
+        types.Tool(
+            name="list_subtypes",
+            description="List all subtypes in DevRev for a given leaf type",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "leaf_type": {"type": "string", "enum": ["issue", "ticket"]},
+                },
+                "required": ["leaf_type"],
+            }
+        )
     ]
 
 @server.call_tool()
@@ -702,6 +733,12 @@ async def handle_call_tool(
         if state:
             payload["state"] = state
 
+        custom_fields = arguments.get("custom_fields")
+        if custom_fields:
+            payload["custom_fields"] = {}
+            for custom_field in custom_fields:
+                payload["custom_fields"]["tnt__" + custom_field["name"]] = custom_field["value"]
+
         sla_summary = arguments.get("sla_summary")
         if sla_summary:
             payload["issue"]["sla_summary"] = {"target_time": {"type": "range", "after": sla_summary["after"], "before": sla_summary["before"]}}
@@ -717,6 +754,14 @@ async def handle_call_tool(
 
             if 'issue' in type:
                 payload["issue"]["rev_orgs"] = rev_orgs
+
+        subtype = arguments.get("subtype")
+        if subtype:
+            if 'ticket' in type:
+                payload["ticket"]["subtype"] = subtype
+            
+            if 'issue' in type:
+                payload["issue"]["subtype"] = subtype
 
         target_close_date = arguments.get("target_close_date")
         if target_close_date:
@@ -1268,6 +1313,37 @@ async def handle_call_tool(
             types.TextContent(
                 type="text",
                 text=f"Sprints for '{ancestor_part_id}':\n{sprints}"
+            )
+        ]
+    elif name == "list_subtypes":
+        if not arguments:
+            raise ValueError("Missing arguments")
+
+        payload = {}
+        
+        leaf_type = arguments.get("leaf_type")
+        if not leaf_type:
+            raise ValueError("Missing leaf_type parameter")
+        payload["leaf_type"] = leaf_type
+
+        response = make_devrev_request(
+            "schemas.subtypes.list",
+            payload
+        )
+
+        if response.status_code != 200:
+            error_text = response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"List subtypes failed with status {response.status_code}: {error_text}"
+                )
+            ]
+    
+        return [
+            types.TextContent(
+                type="text",
+                text=f"Subtypes for '{leaf_type}':\n{response.json()}"
             )
         ]
     else:

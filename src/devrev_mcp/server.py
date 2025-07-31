@@ -200,9 +200,10 @@ async def handle_list_tools() -> list[types.Tool]:
                         "items": {
                             "type": "object",
                             "properties": {
-                                "name": {"type": "string", "description": "The name of the custom field. All the characters in the name should be lowercase and words seperated by underscores. For example: 'custom_field_name'"},
+                                "name": {"type": "string", "description": "The name of the custom field. All the characters in the name should be lowercase and words separated by underscores. For example: 'custom_field_name'"},
                                 "value": {"type": "array", "items": {"type": "string"}, "description": "The value of the custom field"}
-                            }
+                            },
+                            "required": ["name", "value"]
                         },
                         "description": "Use this to filter on the custom fields, which are not present in the input schema."
                     },
@@ -210,7 +211,7 @@ async def handle_list_tools() -> list[types.Tool]:
                         "type": "array",
                         "items": {
                             "type": "string",
-                            "description": "The DevRev value of the subtype to filter on. Remember to alwaysuse the list_subtypes tool to check the correct DevRev values of subtypes."
+                            "description": "The DevRev value of the subtype to filter on. Remember to always use the list_subtypes tool to check the correct DevRev values of subtypes."
                         },
                         "description": "Use this to filter on the subtype of the work items."
                     }

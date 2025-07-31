@@ -195,6 +195,17 @@ async def handle_list_tools() -> list[types.Tool]:
                         },
                         "description": "Use this to filter on sprints."
                     },
+                    "custom_fields": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {"type": "string", "description": "The name of the custom field. All the characters in the name should be lowercase and words seperated by underscores. For example: 'custom_field_name'"},
+                                "value": {"type": "array", "items": {"type": "string"}, "description": "The value of the custom field"}
+                            }
+                        },
+                        "description": "Use this to filter on the custom fields, which are not present in the input schema."
+                    },
                     "subtype": {
                         "type": "array",
                         "items": {
@@ -720,6 +731,12 @@ async def handle_call_tool(
         state = arguments.get("state")
         if state:
             payload["state"] = state
+
+        custom_fields = arguments.get("custom_fields")
+        if custom_fields:
+            payload["custom_fields"] = {}
+            for custom_field in custom_fields:
+                payload["custom_fields"]["tnt__" + custom_field["name"]] = custom_field["value"]
 
         sla_summary = arguments.get("sla_summary")
         if sla_summary:

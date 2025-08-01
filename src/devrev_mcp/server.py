@@ -101,6 +101,14 @@ async def handle_list_tools() -> list[types.Tool]:
                     "owned_by": {"type": "array", "items": {"type": "string"}, "description": "The DevRev IDs of the users who are assigned to the work item"},
                     "stage": {"type": "string", "description": "The stage name of the work item. Use valid_stage_transition tool to get the list of valid stages you an update to."},
                     "sprint": {"type": "string", "description": "The DevRev ID of the sprint to be assigned to an issue."},
+                    "subtype": {
+                        "type": "object",
+                        "properties": {
+                            "drop": {"type": "boolean", "description": "If true, the subtype will be dropped from the work item. If false, the subtype will be added to the work item."},
+                            "subtype": {"type": "string", "description": "The subtype value of the work item. Remember to use list_subtypes tool to get the list of valid subtypes."}
+                        },
+                        "required": ["drop"]
+                    }
                 },
                 "required": ["id", "type"],
             },
@@ -677,6 +685,13 @@ async def handle_call_tool(
         sprint = arguments.get("sprint")
         if sprint:
             payload["sprint"] = sprint
+
+        subtype = arguments.get("subtype")
+        if subtype:
+            if subtype["drop"]:
+                payload["custom_schema_spec"] = {"drop": {"subtype": True}, "tenant_fragment": True, "validate_required_fields": True}
+            else:
+                payload["custom_schema_spec"] = {"subtype": subtype["subtype"], "tenant_fragment": True, "validate_required_fields": True}
 
         response = make_devrev_request(
             "works.update",

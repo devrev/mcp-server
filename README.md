@@ -2,13 +2,14 @@
 
 ## Overview
 
-A Model Context Protocol server for DevRev. This server provides comprehensive access to DevRev's APIs, allowing you to manage work items (issues, tickets), parts (enhancements), meetings, workflow transitions, timeline entries, and sprint planning. Search across your DevRev data and retrieve user information with advanced filtering and pagination support.
+A Model Context Protocol server for DevRev. This server provides comprehensive access to DevRev's APIs, allowing you to manage work items (issues, tickets), parts (enhancements), meetings, workflow transitions, timeline entries, sprint planning, and subtypes. Access vista boards, search across your DevRev data, and retrieve user information with advanced filtering and pagination support.
 
 ## Tools
 
 ### Search & Discovery
-- **`search`**: Search for information across DevRev using the search API with support for different namespaces (articles, issues, tickets, parts, dev_users, accounts, rev_orgs).
+- **`search`**: Search for information across DevRev using the hybrid search API with support for different namespaces (articles, issues, tickets, parts, dev_users, accounts, rev_orgs, vistas, incidents).
 - **`get_current_user`**: Fetch details about the currently authenticated DevRev user.
+- **`get_vista`**: Retrieve information about a vista (sprint board) in DevRev using its ID. Vistas contain sprints (vista group items) that can be used for filtering and sprint planning.
 
 ### Work Items (Issues & Tickets)
 - **`get_work`**: Get comprehensive information about a specific DevRev work item using its ID.
@@ -29,6 +30,7 @@ A Model Context Protocol server for DevRev. This server provides comprehensive a
 - **`valid_stage_transition`**: Get a list of valid stage transitions for a given work item (issue, ticket) or part (enhancement). Use this before updating stages to ensure transitions are valid.
 - **`add_timeline_entry`**: Add timeline entries to work items (issues, tickets) or parts (enhancements) to track updates and progress.
 - **`get_sprints`**: Get active or planned sprints for a given part ID, useful for sprint planning and issue assignment.
+- **`list_subtypes`**: List all available subtypes in DevRev for a given leaf type (issue or ticket), enabling proper categorization of work items.
 
 ## Prerequisites
 
@@ -139,13 +141,15 @@ On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
 
 ## Features
 
-- **Comprehensive Work Item Management**: Create, read, update, and list both issues and tickets
+- **Comprehensive Work Item Management**: Create, read, update, and list both issues and tickets with advanced filtering
 - **Enhanced Part Management**: Full CRUD operations for parts (enhancements) including hierarchical relationships
-- **Advanced Search**: Search across multiple namespaces with hybrid search capabilities
-- **Flexible Filtering**: Advanced filtering options for listing work items and parts based on dates, assignees, states, and more
+- **Advanced Search**: Search across multiple namespaces (articles, issues, tickets, parts, dev_users, accounts, rev_orgs, vistas, incidents) with hybrid search capabilities
+- **Vista Board Integration**: Access vista (sprint board) information and retrieve sprint group items for effective sprint management
+- **Flexible Filtering**: Advanced filtering options for listing work items and parts based on dates, assignees, states, custom fields, subtypes, and more
 - **User Context**: Access to current user information for personalized experiences
-- **Rich Data Support**: Handle complex relationships between work items, parts, users, and organizations
-- **Meeting Management**: List and filter meetings across different channels and states
-- **Workflow Control**: Validate stage transitions and manage work item lifecycle
+- **Rich Data Support**: Handle complex relationships between work items, parts, users, organizations, and sprints
+- **Meeting Management**: List and filter meetings across different channels and states with comprehensive date filtering
+- **Workflow Control**: Validate stage transitions and manage work item lifecycle with precise stage management
 - **Timeline Tracking**: Add timeline entries to track progress and updates on work items and parts
-- **Sprint Planning**: Access sprint information for effective project management and issue assignment
+- **Sprint Planning**: Access sprint information for effective project management and issue assignment with vista integration
+- **Subtype Management**: List and manage subtypes for proper categorization of issues and tickets

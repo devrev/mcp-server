@@ -129,7 +129,20 @@ async def handle_list_tools() -> list[types.Tool]:
                         "required": ["next_cursor", "mode"],
                         "description": "The cursor to use for pagination. If not provided, iteration begins from the first page. In the output you get next_cursor, use it and the correct mode to get the next or previous page. You can use these to loop through all the pages."
                     },
-                    "applies_to_part": {"type": "array", "items": {"type": "string"}, "description": "The part IDs of the works to list"},
+                    "limit": {"type": "integer", "description": "The maximum number of works to return. Unless specified, keep the limit 10."},
+                    "applies_to_part": {
+                        "type": "object",
+                        "properties": {
+                            "parts": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "The part IDs of the works to list"
+                            },
+                            "include_child_parts": {"type": "boolean", "description": "Whether to include child parts in the list of parts to list works for."}
+                        },
+                        "required": ["parts", "include_child_parts"],
+                        "description": "The parts to list works for. If include_child_parts is true, the child parts of the parts will also be included in the list."
+                    },
                     "created_by": {"type": "array", "items": {"type": "string"}, "description": "The user IDs of the creators of the works to list"},
                     "owned_by": {"type": "array", "items": {"type": "string"}, "description": "The user IDs of the owners of the works to list"},
                     "state": {"type": "array", "items": {"type": "string", "enum": ["open", "closed", "in_progress"]}, "description": "The state names of the works to list"},
@@ -224,7 +237,7 @@ async def handle_list_tools() -> list[types.Tool]:
                         "description": "Use this to filter on the subtype of the work items."
                     }
                 },
-                "required": ["type"],
+                "required": ["type", "limit"],
             },
         ),
         types.Tool(
@@ -723,6 +736,10 @@ async def handle_call_tool(
             raise ValueError("Missing type parameter")
         payload["type"] = type
 
+        limit = arguments.get("limit")
+        if limit:
+            payload["limit"] = limit
+
         cursor = arguments.get("cursor")
         if cursor:
             payload["cursor"] = cursor["next_cursor"]
@@ -730,7 +747,10 @@ async def handle_call_tool(
 
         applies_to_part = arguments.get("applies_to_part")
         if applies_to_part:
-            payload["applies_to_part"] = applies_to_part
+            if 'ticket' in type:
+                payload["ticket"]["applies_to_part"] = applies_to_part
+            elif 'issue' in type:
+                payload["issue"]["applies_to_part"] = applies_to_part
 
         created_by = arguments.get("created_by")
         if created_by:
@@ -814,7 +834,7 @@ async def handle_call_tool(
         if payload["ticket"] == {}:
             payload.pop("ticket")
 
-        response = make_devrev_request(
+        response = make_internal_devrev_request(
             "works.list",
             payload
         )

@@ -129,7 +129,15 @@ async def handle_list_tools() -> list[types.Tool]:
                         "required": ["next_cursor", "mode"],
                         "description": "The cursor to use for pagination. If not provided, iteration begins from the first page. In the output you get next_cursor, use it and the correct mode to get the next or previous page. You can use these to loop through all the pages."
                     },
-                    "applies_to_part": {"type": "array", "items": {"type": "string"}, "description": "The part IDs of the works to list"},
+                    "applies_to_part": {
+                        "type": "object",
+                        "properties": {
+                            "part_ids": {"type": "array", "items": {"type": "string"}, "description": "The part IDs of the works to list"},
+                            "include_child_parts": {"type": "boolean", "description": "Whether to include child parts in the search"}
+                        },
+                        "required": ["part_ids"],
+                        "description": "Filter for works by part IDs with option to include child parts"
+                    },
                     "created_by": {"type": "array", "items": {"type": "string"}, "description": "The user IDs of the creators of the works to list"},
                     "owned_by": {"type": "array", "items": {"type": "string"}, "description": "The user IDs of the owners of the works to list"},
                     "state": {"type": "array", "items": {"type": "string", "enum": ["open", "closed", "in_progress"]}, "description": "The state names of the works to list"},
@@ -730,7 +738,14 @@ async def handle_call_tool(
 
         applies_to_part = arguments.get("applies_to_part")
         if applies_to_part:
-            payload["applies_to_part"] = applies_to_part
+            part_ids = applies_to_part.get("part_ids")
+            include_child_parts = applies_to_part.get("include_child_parts", False)
+            
+            if part_ids:
+                if include_child_parts:
+                    payload["applies_to_part"] = {"parts": part_ids, "include_child_parts": include_child_parts}
+                else:
+                    payload["applies_to_part"] = part_ids
 
         created_by = arguments.get("created_by")
         if created_by:
